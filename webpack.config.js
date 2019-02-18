@@ -1,5 +1,5 @@
-var webpack = require('webpack');  
-module.exports = {  
+var webpack = require('webpack');
+module.exports = {
   entry: [
     "./js/app.js"
   ],
@@ -8,12 +8,12 @@ module.exports = {
     filename: "bundle.js"
   },
   module: {
-    loaders: [
+    rules: [
       {
         test: /\.js?$/,
         loader: 'babel-loader',
         query: {
-          presets: ['es2015', 'react']
+          presets: ['@babel/preset-env', '@babel/preset-react']
         },
         exclude: /node_modules/
       }

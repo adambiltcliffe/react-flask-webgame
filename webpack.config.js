@@ -1,11 +1,13 @@
 var webpack = require('webpack');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
 module.exports = {
   entry: [
     "./js/app.js"
   ],
   output: {
-    path: __dirname + '/static',
-    filename: "bundle.js"
+    path: __dirname + '/dist',
+    filename: 'app.js',
+    publicPath: '/bundled-assets/'
   },
   module: {
     rules: [
@@ -20,5 +22,15 @@ module.exports = {
     ]
   },
   plugins: [
-  ]
+    new HtmlWebpackPlugin({
+      filename: 'app.html',
+      hash: true,
+      template: 'html/webpack_app_template.html'
+    })
+  ],
+  mode: 'development',
+  watch: true,
+  watchOptions: {
+    ignored: /node_modules/
+  }
 };

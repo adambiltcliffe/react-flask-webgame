@@ -3,8 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import ioClient from 'socket.io-client';
 
-ReactDOM.render(<Hello/>, document.getElementById('reactEntry'));
-console.log("Testing");
+ReactDOM.render(<Hello/>, document.getElementById('reactRoot'));
 
 var socket = ioClient.connect('http://' + document.domain + ':' + location.port);
 // verify our websocket connection is established

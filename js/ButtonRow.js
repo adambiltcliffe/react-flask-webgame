@@ -1,17 +1,11 @@
 import React from 'react';
+import MoveButton from './MoveButton'
 
-class ButtonRow extends React.Component {
-  render() {
-    // probably bad
-    if (typeof this.props.moves == 'undefined')
-    {
-      return null
-    }
-    const buttons = this.props.moves.map((moveName) => <button>{moveName}</button>)
-    return (<div>
-              {buttons}
-            </div>);
-  }
-};
+function ButtonRow(props) {
+  const buttons = props.moves.map((moveName) => <MoveButton key={moveName} send={props.send} moveName={moveName} />)
+  return (<div>
+            {buttons}
+          </div>);
+}
 
 export default ButtonRow;

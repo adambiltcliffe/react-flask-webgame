@@ -1,6 +1,6 @@
 import React from 'react';
 import ioClient from 'socket.io-client';
-import ButtonRow from './ButtonRow'
+import GameClient from './GameClient'
 
 class Application extends React.Component {
   constructor(props) {
@@ -9,16 +9,7 @@ class Application extends React.Component {
     this.sendMoveMessage = this.sendMoveMessage.bind(this)
   }
   render() {
-    var buttonRow = null;
-    if (this.state.board.moves)
-    {
-      buttonRow = <ButtonRow moves={this.state.board.moves} send={this.sendMoveMessage} />
-    }
-    return (<div>
-              <button id="testButton" onClick={this.sendMoveMessage.bind(this, 'test')}>Test</button>
-              <p>Current board state: {JSON.stringify(this.state.board)}.</p>
-              {buttonRow}
-            </div>);
+    return <GameClient board={this.state.board} send={this.sendMoveMessage}/>;
   }
   componentDidMount() {
     this.socket = ioClient.connect();

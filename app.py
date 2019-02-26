@@ -41,10 +41,12 @@ def disconnect_user():
 @socketio.on('make_move')
 def test_message(data):
   if 'move' in data:
-    game.make_move(data['move']) # should validate somewhere
-  for sid, username in sids.items():
-    gs = game.get_user_view(username)
-    socketio.emit('update', gs, room=sid)
+    if game.make_move(session['username'], data['move']):
+      for sid, username in sids.items():
+        gs = game.get_user_view(username)
+        socketio.emit('update', gs, room=sid)
+    else:
+      pass # tried to make invalid move
 
 if __name__ == '__main__':
     socketio.run(app)

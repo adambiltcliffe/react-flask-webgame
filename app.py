@@ -8,18 +8,18 @@ app = Flask(__name__)
 app.secret_key = 'probably load this from a config file later'
 socketio = SocketIO(app)
 
-game = Game('albus', 'bungo')
+games = {'1': Game('albus', 'bungo'), '2': Game('albus', 'conan'), '3': Game('conan', 'bungo')}
 sids = {}
 
-@app.route('/')
-@app.route('/play')
-def game_app_page():
+@app.route('/play/lobby')
+@app.route('/play/game/<gameid>')
+def game_app_page(**_):
     return send_from_directory('dist', 'app.html')
 
 @app.route('/testlogin/<username>')
 def create_test_login(username):
   session['username'] = username
-  return redirect('/play')
+  return redirect('/play/lobby')
 
 @app.route('/bundled-assets/<filename>')
 def bundled_assets(filename):
@@ -32,21 +32,31 @@ def connect_new_user():
     session['username'] = 'anonymous'
   sids[request.sid] = session['username']
   emit('identify', session['username'])
-  emit('update', game.get_user_view(session['username']))
 
 @socketio.on('disconnect')
 def disconnect_user():
   del sids[request.sid]
 
+@socketio.on('load_game')
+def send_game_state(data):
+  print(request.sid, 'load_game', data)
+  if 'gameid' in data and data['gameid'] in games:
+    emit('update', games[data['gameid']].get_user_view(session['username']))
+  else:
+    emit('client_error', 'Bad game ID.')
+
 @socketio.on('make_move')
 def test_message(data):
-  if 'move' in data:
-    if game.make_move(session['username'], data['move']):
+  if 'gameid' in data and data['gameid'] in games:
+    game = games[data['gameid']]
+    if 'move' in data and game.make_move(session['username'], data['move']):
       for sid, username in sids.items():
         gs = game.get_user_view(username)
         socketio.emit('update', gs, room=sid)
     else:
-      pass # tried to make invalid move
+      emit('client_error', f'Invalid move data. {data}')
+  else:
+    emit('client_error', 'Bad game ID.')
 
 if __name__ == '__main__':
     socketio.run(app)

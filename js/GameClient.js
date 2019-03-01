@@ -1,24 +1,67 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ButtonRow from './ButtonRow'
+import io from 'socket.io-client';
 
 function GameClient(props) {
-  useEffect(() => {
-    if (props.clientState.isConnected && !props.clientState.isLoaded && !props.clientState.error) {
-      props.send('load_game', {gameid: props.gameid})
-    }
-  })
-  if (props.clientState.error) {
-    return <div>Client error: {props.clientState.error}</div>
+  const [isConnected, setConnected] = useState(false)
+  const [isLoadRequested, setLoadRequested] = useState(false)
+  const [isLoaded, setLoaded] = useState(false)
+  const [error, setError] = useState(null)
+  const [socket, setSocket] = useState(null)
+  const [game, setGame] = useState({})
+
+  function sendMessage(message, data) {
+    socket.emit(message, data)
   }
-  if (!props.clientState.isLoaded) {
+
+  // Side effects
+  useEffect(() => {
+    const sock = io('/game')
+    sock.on('connect', () => {
+      console.log('connected!!')
+      setConnected(true)
+    })
+    sock.on('update', (data) => {
+      console.log('Received update')
+      console.log(JSON.stringify(data))
+      setGame(data)
+      setLoaded(true)
+    })
+    sock.on('client_error', (msg) => {
+      console.log('Received client error: ' + msg)
+      setError(msg)
+    })
+    setSocket(sock)
+    return function cleanup() {
+      if (isLoadRequested)
+      {
+        socket.emit('close_game', {gameid: props.gameid})
+      }
+      socket.disconnect()
+    }
+  }, [props.gameid])
+
+  useEffect(() => {
+    if (isConnected && !isLoadRequested) {
+      console.log('requesting load')
+      socket.emit('open_game', {gameid: props.gameid})
+      setLoadRequested(true)
+    }
+  }, [isConnected, isLoadRequested])
+
+  // Now render
+  if (error) {
+    return <div>Client error: {error}</div>
+  }
+  if (!isLoaded) {
     return <div>Loading game ...</div>
   }
   var buttonRow = null;
-  if (props.game.moves) {
-    buttonRow = <ButtonRow moves={props.game.moves} send={props.send} gameid={props.gameid} />
+  if (game.moves) {
+    buttonRow = <ButtonRow moves={game.moves} send={sendMessage} gameid={props.gameid} />
   }
   return (<div>
-    <p>Current game state: {JSON.stringify(props.game)}.</p>
+    <p>Current game state: {JSON.stringify(game)}.</p>
     {buttonRow}
     <p>All props: {JSON.stringify(props)}</p>
   </div>);

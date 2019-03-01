@@ -11,7 +11,7 @@ app.secret_key = 'probably load this from a config file later'
 socketio = SocketIO(app)
 
 games = {'1': Game('albus', 'bungo'), '2': Game('albus', 'conan'), '3': Game('conan', 'bungo')}
-sids = {}
+usernames = {}
 listeners = defaultdict(set)
 
 @app.route('/play/lobby')
@@ -30,21 +30,25 @@ def bundled_assets(filename):
 
 @socketio.on('connect', namespace='/game')
 def connect_new_user():
-  print(request.sid)
   if not 'username' in session:
     session['username'] = 'anonymous'
-  sids[request.sid] = session['username']
+  usernames[request.sid] = session['username']
+  print(f"{request.sid} ({session['username']}) connected")
 
 @socketio.on('disconnect', namespace='/game')
 def disconnect_user():
-  del sids[request.sid]
+  username = usernames[request.sid]
+  del usernames[request.sid]
+  for ls in listeners.values():
+    ls.discard(request.sid)
+  print(f'{request.sid} ({username}) disconnected')
 
 @socketio.on('open_game', namespace='/game')
 def send_game_state_add_listener(data):
   print(request.sid, 'load_game', data)
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
-    emit('update', games[gameid].get_user_view(sids[request.sid]))
+    emit('update', {'gameid': gameid, 'state': games[gameid].get_user_view(usernames[request.sid])})
     listeners[gameid].add(request.sid)
   else:
     emit('client_error', 'Bad game ID.')
@@ -60,15 +64,15 @@ def remove_listener(data):
 @socketio.on('make_move', namespace='/game')
 def test_message(data):
   print(request.sid, data)
-  if 'gameid' in data and data['gameid'] in games:
-    game = games[data['gameid']]
+  gameid = data.get('gameid', None)
+  if gameid is not None and gameid in games:
+    game = games[gameid]
     if 'move' in data and game.make_move(session['username'], data['move']):
-      for sid, username in sids.items():
-        # This sends the update to *every* connected user, whichever game they are playing
-        # Super buggy!
-        gs = game.get_user_view(username)
-        socketio.emit('update', gs, room=sid, namespace='/game')
+      for sid in listeners[gameid]:
+        gs = game.get_user_view(usernames[sid])
+        socketio.emit('update', {'gameid': gameid, 'state': gs}, room=sid, namespace='/game')
     else:
+      # Should handle the case where it was a valid move for a recent state
       emit('client_error', f'Invalid move data. {data}')
   else:
     emit('client_error', 'Bad game ID.')

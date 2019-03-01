@@ -24,8 +24,15 @@ function GameClient(props) {
     sock.on('update', (data) => {
       console.log('Received update')
       console.log(JSON.stringify(data))
-      setGame(data)
-      setLoaded(true)
+      var gameid, state
+      ({ gameid, state } = data)
+      if (gameid == props.gameid) {
+        setGame(state)
+        setLoaded(true)
+      }
+      else {
+        console.log('Ignoring it ...')
+      }
     })
     sock.on('client_error', (msg) => {
       console.log('Received client error: ' + msg)

@@ -28,12 +28,29 @@ def create_test_login(username):
 def bundled_assets(filename):
   return send_from_directory('dist', filename)
 
+# /lobby namespace
+@socketio.on('connect', namespace='/lobby')
+def connect_new_lobby_user():
+  if not 'username' in session:
+    session['username'] = 'anonymous'
+  usernames[request.sid] = session['username']
+  print(f"{request.sid} ({session['username']}) connected to lobby")
+  gamelist = {gameid: games[gameid].get_lobby_view() for gameid in games}
+  emit('games_list', {'gamelist': gamelist})
+
+@socketio.on('disconnect', namespace='/lobby')
+def disconnect_lobby_user():
+  username = usernames[request.sid]
+  del usernames[request.sid]
+  print(f'{request.sid} ({username}) disconnected from lobby')
+
+# /game namespace
 @socketio.on('connect', namespace='/game')
 def connect_new_user():
   if not 'username' in session:
     session['username'] = 'anonymous'
   usernames[request.sid] = session['username']
-  print(f"{request.sid} ({session['username']}) connected")
+  print(f"{request.sid} ({session['username']}) connected to game")
 
 @socketio.on('disconnect', namespace='/game')
 def disconnect_user():
@@ -41,7 +58,7 @@ def disconnect_user():
   del usernames[request.sid]
   for ls in listeners.values():
     ls.discard(request.sid)
-  print(f'{request.sid} ({username}) disconnected')
+  print(f'{request.sid} ({username}) disconnected from game')
 
 @socketio.on('open_game', namespace='/game')
 def send_game_state_add_listener(data):
@@ -71,6 +88,7 @@ def test_message(data):
       for sid in listeners[gameid]:
         gs = game.get_user_view(usernames[sid])
         socketio.emit('update', {'gameid': gameid, 'state': gs}, room=sid, namespace='/game')
+      socketio.emit('game_status', {'gameid': gameid, 'status': game.get_lobby_view()}, broadcast=True, namespace='/lobby')
     else:
       # Should handle the case where it was a valid move for a recent state
       emit('client_error', f'Invalid move data. {data}')

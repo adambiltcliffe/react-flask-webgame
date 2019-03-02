@@ -40,11 +40,14 @@ function GameClient(props) {
     })
     setSocket(sock)
     return function cleanup() {
-      if (isLoadRequested)
-      {
-        socket.emit('close_game', {gameid: props.gameid})
-      }
-      socket.disconnect()
+      // we can't access the (current) value of isLoadRequested inside the handler but we can do this ...
+      setLoadRequested((lr) => {
+        if (lr) {
+          sock.emit('close_game', {gameid: props.gameid})
+        }
+        return lr
+      })
+      sock.disconnect()
     }
   }, [props.gameid])
 

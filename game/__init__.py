@@ -28,6 +28,10 @@ class Game:
             self.state['active'] = 3 - self.state['active']
         self.find_moves()
         return True
+    def get_lobby_view(self):
+        p = self.state['players']
+        view = {'players': p, 'turn': p[self.state['active']-1], 'status': 'active' if self.state['winner'] is None else 'finished'}
+        return view
     def get_user_view(self, userid):
         view = {k: v for k, v in self.state.items()}
         view['who_am_i'] = userid

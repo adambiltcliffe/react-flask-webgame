@@ -10,7 +10,7 @@ function LobbyClient(props) {
 
   // Side effects
   useEffect(() => {
-    const sock = io('/lobby')
+    const sock = io('/lobby', {transports: ["websocket"], query: {foo: "bar"}})
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)

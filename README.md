@@ -1,75 +1,25 @@
+TO-DO LIST
+==========
 
-# React + Flask starter kit
+Create a better demo game with some hidden information
 
-A quick starter repo that includes Flask and React, with Babel and Webpack. For proof-of-concept projects, workshop settings, etc where you don't want to worry about developer setup or writing config files.
+Set up a proper structure for game state and game history to include a log and replayable
+game actions
 
-TLDR; for the quick and dirty setup, install your dependencies:
+Figure out a robust way to handle users logging in/out, EITHER:
+ * server-side sessions with a flask route for login/logout (have to work out what to do
+   about a user's sockets when they logout via an HTTP route, and the client app doesn't
+   necessarily know its own login state)
+   OR
+ * stateless auth using JWT or whatever (have to figure out how to store the associated
+   token for each socket)
 
-```
-pip install virtualenv
-virtualenv venv; source venv/bin/activate
-pip install -r requirements.txt
-npm install -g webpack; npm install
-```
+Persist user and game information to a database
 
-Then in two separate tabs run `python app.py` and `webpack --watch`. Make edits to `js/Hello.js` and `app.py` to edit the frontend and backend, respectively.
+Make it possible to login with Google or Discord or whatever
 
-These steps are explained in more detail below.
+Add functionality to create games in the lobby
 
-## Prerequisites
+Make the lobby visually less horrendous
 
-You'll need some package managers.
-
-- `npm`
-- `pip`
-
-## Setup
-
-For the backend:
-
-```
-virtualenv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-For the frontend:
-
-If you don't have webpack, install it:
-
-```
-npm install -g webpack
-```
-
-Then, use `npm` to install the remaining JavaScript dependencies.
-
-```
-npm install
-```
-
-## Development
-
-The entry point for the app is in `js/app.js`. The starter React component is `js/Hello.js`. Editing this file is a good place to start.
-
-While developing on the frontend, run `webpack --watch` to keep re-compiling your JavaScript code.
-
-Running `webpack` creates a file in `static/bundle.js`, which is the bundled version of your frontend code.
-
-The "backend" here is a bare-bones Flask app. Look in `app.py` if you want to make edits to the backend.
-
-To run the application, follow the steps in the next section.
-
-## Running the app
-
-If you're using a virtualenv, activate it.
-
-```
-source venv/bin/activate
-```
-
-Then run the Flask app:
-
-```
-python app.py
-```
-
+Make the play screen visually less horrendous

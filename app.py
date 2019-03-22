@@ -14,6 +14,10 @@ games = {'1': Game('albus', 'bungo'), '2': Game('albus', 'conan'), '3': Game('co
 usernames = {}
 listeners = defaultdict(set)
 
+@app.route('/play')
+def default_play():
+  return redirect('/play/lobby')
+
 @app.route('/play/lobby')
 @app.route('/play/game/<gameid>')
 def game_app_page(**_):
@@ -35,6 +39,7 @@ def connect_new_lobby_user():
     session['username'] = 'anonymous'
   usernames[request.sid] = session['username']
   print(f"{request.sid} ({session['username']}) connected to lobby")
+  print(request.args.get("foo"))
   gamelist = {gameid: games[gameid].get_lobby_view() for gameid in games}
   emit('games_list', {'gamelist': gamelist})
 

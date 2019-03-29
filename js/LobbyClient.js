@@ -10,7 +10,8 @@ function LobbyClient(props) {
 
   // Side effects
   useEffect(() => {
-    const sock = io('/lobby', {transports: ["websocket"], query: {foo: "bar"}})
+    console.log(props)
+    const sock = io('/lobby', {transports: ["websocket"], query: {token: props.authToken}})
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)
@@ -31,9 +32,10 @@ function LobbyClient(props) {
     })
     setSocket(sock)
     return function cleanup() {
+      console.log("Cleaning up...")
       sock.disconnect()
     }
-  }, [])
+  }, [props.authToken])
 
   // Now render
   if (!isLoaded) {

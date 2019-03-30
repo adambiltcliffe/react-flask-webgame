@@ -8,13 +8,15 @@ function Application (props) {
   const [authNickname, setAuthNickname] = useState(null)
   const [authToken, setAuthToken] = useState(null)
   return  <div>
-            <NavBar authNickname={authNickname} setAuthNickname={setAuthNickname} setAuthToken={setAuthToken} />
             <BrowserRouter>
-              <Switch>
-                <Route exact path="/play/lobby"><LobbyClient authToken={authToken}/></Route>
-                <Route path="/play/game/:gameid" render = {({ match }) => <GameClient gameid={match.params.gameid} authToken={authToken} />} />
-                <Route><Redirect to="/404" /></Route>
-              </Switch>
+              <>
+                <NavBar authNickname={authNickname} setAuthNickname={setAuthNickname} setAuthToken={setAuthToken} />
+                <Switch>
+                  <Route exact path="/play/lobby"><LobbyClient authToken={authToken}/></Route>
+                  <Route path="/play/game/:gameid" render = {({ match }) => <GameClient gameid={match.params.gameid} authToken={authToken} />} />
+                  <Route><Redirect to="/404" /></Route>
+                </Switch>
+              </>
             </BrowserRouter>
           </div>
 };

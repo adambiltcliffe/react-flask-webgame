@@ -18,3 +18,4 @@ Make the play screen visually less horrendous
 
 Handle token timeouts
 Handle the brief opening and closing of anonymous sockets while loading
+Check what's going on with auto reconnects using stale tokens

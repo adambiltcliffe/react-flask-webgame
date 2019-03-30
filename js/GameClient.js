@@ -53,8 +53,8 @@ function GameClient(props) {
     return <div>Loading game ...</div>
   }
   var buttonRow = null;
-  if (game.moves) {
-    buttonRow = <ButtonRow moves={game.moves} send={sendMessage} gameid={props.gameid} />
+  if (game.my_moves) {
+    buttonRow = <ButtonRow moves={game.my_moves} send={sendMessage} gameid={props.gameid} />
   }
   return (<div>
     <p>Current game state: {JSON.stringify(game)}.</p>

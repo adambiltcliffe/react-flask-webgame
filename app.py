@@ -17,7 +17,15 @@ socketio = SocketIO(app)
 jwt = JWTManager(app)
 
 users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the Destroyer'}
-games = {'1': Game(1, 'test-albus', 'test-bungo'), '2': Game(2, 'test-albus', 'test-conan'), '3': Game(3, 'test-conan', 'test-bungo')}
+next_game_id = [1]
+games = {}
+def make_game(id1, id2):
+  games[str(next_game_id[0])] = Game(next_game_id[0], id1, users[id1], id2, users[id2])
+  next_game_id[0] += 1
+make_game('test-albus', 'test-bungo')
+make_game('test-albus', 'test-conan')
+make_game('test-conan', 'test-bungo')
+print(games)
 
 class Conn(object):
   def __init__(self, encoded_token):
@@ -86,6 +94,7 @@ def disconnect_user():
 @socketio.on('open_game', namespace='/game')
 def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
+  print(gameid, games)
   if gameid is not None and gameid in games:
     game = games[gameid]
     identity = conns[request.sid].identity

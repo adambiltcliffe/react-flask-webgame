@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Link, Route, Switch } from 'react-router-dom';
 import JWT from 'jwt-client';
 
 JWT.defaults.tokenPrefix = ""
@@ -48,6 +49,11 @@ function NavBar(props) {
     }
   }, [props.authNickname])
 
+  const lobbyLink = (<Switch>
+                        <Route exact path="/play/lobby" />
+                        <Route><Link to="/play/lobby">Back to lobby</Link></Route>
+                      </Switch>)
+
   if (props.authNickname) {
     return (<div>
       This is the nav bar!
@@ -55,6 +61,7 @@ function NavBar(props) {
       <form onSubmit={handleLogout}>
         <button type="submit">Log out</button>
       </form>
+      {lobbyLink}
     </div>)
 
   }
@@ -66,6 +73,7 @@ function NavBar(props) {
         <input type="text" name="name" ref={nameElRef} />
         <button type="submit">Log in</button>
       </form>
+      {lobbyLink}
     </div>)
   }
 };

@@ -1,5 +1,6 @@
 class Game:
-    def __init__(self, player1, player2):
+    def __init__(self, gameid, player1, player2):
+        self.gameid = gameid
         self.start(player1, player2)
     def start(self, player1, player2):
         self.state = {'players': [player1, player2], 'active': 1, 'number': 30, 'winner': None}
@@ -28,6 +29,13 @@ class Game:
             self.state['active'] = 3 - self.state['active']
         self.find_moves()
         return True
+    def get_channel_for_user(self, userid):
+        if userid == self.state['players'][0]:
+            return f'{self.gameid}-player-1'
+        elif userid == self.state['players'][1]:
+            return f'{self.gameid}-player-2'
+        else:
+            return f'{self.gameid}-observers'
     def get_lobby_view(self):
         p = self.state['players']
         view = {'players': p, 'turn': p[self.state['active']-1], 'status': 'active' if self.state['winner'] is None else 'finished'}
@@ -40,3 +48,6 @@ class Game:
         else:
             view['moves'] = []
         return view
+    def get_channel_views(self):
+        for uid in self.state['players'] + ['anonymous']:
+            yield (self.get_channel_for_user(uid), self.get_user_view(uid))

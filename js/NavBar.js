@@ -43,6 +43,9 @@ function NavBar(props) {
       props.setAuthToken(JWT.write(jwtValue))
       props.setAuthNickname(jwtValue.claim.user_claims.nickname)
     }
+    else {
+      JWT.forget()
+    }
   }, [props.authNickname])
 
   if (props.authNickname) {

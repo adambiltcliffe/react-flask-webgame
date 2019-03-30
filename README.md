@@ -1,8 +1,6 @@
 TO-DO LIST
 ==========
 
-Make the listener thing work using rooms instead
-
 Create a better demo game with some hidden information
 
 Set up a proper structure for game state and game history to include a log and replayable

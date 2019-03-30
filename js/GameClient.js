@@ -4,7 +4,6 @@ import io from 'socket.io-client';
 
 function GameClient(props) {
   const [isConnected, setConnected] = useState(false)
-  const [isLoadRequested, setLoadRequested] = useState(false)
   const [isLoaded, setLoaded] = useState(false)
   const [error, setError] = useState(null)
   const [socket, setSocket] = useState(null)
@@ -20,6 +19,8 @@ function GameClient(props) {
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)
+      console.log('requesting load')
+      sock.emit('open_game', {gameid: props.gameid})
     })
     sock.on('update', (data) => {
       console.log('Received update')
@@ -40,24 +41,9 @@ function GameClient(props) {
     })
     setSocket(sock)
     return function cleanup() {
-      // we can't access the (current) value of isLoadRequested inside the handler but we can do this ...
-      setLoadRequested((lr) => {
-        if (lr) {
-          sock.emit('close_game', {gameid: props.gameid})
-        }
-        return lr
-      })
-      sock.disconnect()
+       sock.disconnect()
     }
   }, [props.gameid, props.authToken])
-
-  useEffect(() => {
-    if (isConnected && !isLoadRequested) {
-      console.log('requesting load')
-      socket.emit('open_game', {gameid: props.gameid})
-      setLoadRequested(true)
-    }
-  }, [isConnected, isLoadRequested])
 
   // Now render
   if (error) {

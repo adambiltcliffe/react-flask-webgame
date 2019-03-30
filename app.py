@@ -4,27 +4,23 @@ eventlet.monkey_patch()
 from collections import defaultdict
 
 from flask import (Flask, jsonify, redirect, render_template, request,
-                   send_from_directory, session)
+                   send_from_directory)
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 from jwt import DecodeError
 
 from game import Game
 
 app = Flask(__name__)
-app.secret_key = 'probably load this from a config file later'
 app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
 socketio = SocketIO(app)
 jwt = JWTManager(app)
 
 users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the Destroyer'}
-games = {'1': Game('test-albus', 'test-bungo'), '2': Game('test-albus', 'test-conan'), '3': Game('test-conan', 'test-bungo')}
-
-listeners = defaultdict(set)
+games = {'1': Game(1, 'test-albus', 'test-bungo'), '2': Game(2, 'test-albus', 'test-conan'), '3': Game(3, 'test-conan', 'test-bungo')}
 
 class Conn(object):
   def __init__(self, encoded_token):
-    print(type(encoded_token))
     if encoded_token is None or encoded_token == 'null':
       self.token = None
       self.identity = 'anonymous'
@@ -41,11 +37,6 @@ def default_play():
 @app.route('/play/game/<gameid>')
 def game_app_page(**_):
     return send_from_directory('dist', 'app.html')
-
-@app.route('/testlogin/<username>')
-def create_test_login(username):
-  session['username'] = username
-  return redirect('/play/lobby')
 
 @app.route('/testlogin', methods=['POST'])
 def test_login():
@@ -69,7 +60,7 @@ def bundled_assets(filename):
 def connect_new_lobby_user():
   conns[request.sid] = Conn(request.args.get("token"))
   identity = conns[request.sid].identity
-  print(f"{identity} connected to lobby")
+  print(f"{identity} connected to lobby namespace")
   gamelist = {gameid: games[gameid].get_lobby_view() for gameid in games}
   emit('games_list', {'gamelist': gamelist})
 
@@ -77,38 +68,31 @@ def connect_new_lobby_user():
 def disconnect_lobby_user():
   identity = conns[request.sid].identity
   del conns[request.sid]
-  print(f"{identity} disconnected from lobby")
+  print(f"{identity} disconnected from lobby namespace")
 
 # /game namespace
 @socketio.on('connect', namespace='/game')
 def connect_new_user():
   conns[request.sid] = Conn(request.args.get("token"))
   identity = conns[request.sid].identity
-  print(f"{identity} connected to game")
+  print(f"{identity} connected to game namespace")
 
 @socketio.on('disconnect', namespace='/game')
 def disconnect_user():
   identity = conns[request.sid].identity
   del conns[request.sid]
-  print(f"{identity} disconnected from lobby")
-  for ls in listeners.values():
-    ls.discard(request.sid)
+  print(f"{identity} disconnected from game namespace")
 
 @socketio.on('open_game', namespace='/game')
-def send_game_state_add_listener(data):
-  print(request.sid, 'load_game', data)
+def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
-    emit('update', {'gameid': gameid, 'state': games[gameid].get_user_view(conns[request.sid].identity)})
-    listeners[gameid].add(request.sid)
-  else:
-    emit('client_error', 'Bad game ID.')
-
-@socketio.on('close_game', namespace='/game')
-def remove_listener(data):
-  gameid = data.get('gameid', None)
-  if gameid is not None and gameid in games:
-    listeners[gameid].discard(request.sid)
+    game = games[gameid]
+    identity = conns[request.sid].identity
+    channel = game.get_channel_for_user(identity)
+    join_room(channel)
+    emit('update', {'gameid': gameid, 'state': game.get_user_view(identity)})
+    print(f"{identity} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID.')
 
@@ -118,10 +102,10 @@ def test_message(data):
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
     game = games[gameid]
-    if 'move' in data and game.make_move(conns[sid].identity, data['move']):
-      for sid in listeners[gameid]:
-        gs = game.get_user_view(conns[sid].identity)
-        socketio.emit('update', {'gameid': gameid, 'state': gs}, room=sid, namespace='/game')
+    if 'move' in data and game.make_move(conns[request.sid].identity, data['move']):
+      for room, gv in game.get_channel_views():
+        socketio.emit('update', {'gameid': gameid, 'state': gv}, room=room, namespace='/game')
+        print(f'emitting on {room}')
       socketio.emit('game_status', {'gameid': gameid, 'status': game.get_lobby_view()}, broadcast=True, namespace='/lobby')
     else:
       # Should handle the case where it was a valid move for a recent state

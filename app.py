@@ -20,7 +20,11 @@ users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the 
 next_game_id = [1]
 games = {}
 def make_game(id1, id2):
-  games[str(next_game_id[0])] = Game(next_game_id[0], id1, users[id1], id2, users[id2])
+  g = Game(next_game_id[0])
+  g.add_player(id1, users[id1])
+  g.add_player(id2, users[id2])
+  g.start()
+  games[str(next_game_id[0])] = g
   next_game_id[0] += 1
 make_game('test-albus', 'test-bungo')
 make_game('test-albus', 'test-conan')

@@ -9,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_socketio import SocketIO, emit, join_room
 from jwt import DecodeError
 
-from game import Game
+from game import SquareSubtractionGame
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
@@ -20,7 +20,7 @@ users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the 
 next_game_id = [1]
 games = {}
 def make_game(id1, id2):
-  g = Game(next_game_id[0])
+  g = SquareSubtractionGame(next_game_id[0])
   g.add_player(id1, users[id1])
   g.add_player(id2, users[id2])
   g.start()

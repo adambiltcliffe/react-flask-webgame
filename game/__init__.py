@@ -68,6 +68,7 @@ class TurnBasedGame(BaseGame):
         raise NotImplementedError()
     def make_move(self, userid, move):
         if move == 'restart':
+            self.winner = None
             self.start()
             return True
         elif userid != self.active_userid:
@@ -75,11 +76,13 @@ class TurnBasedGame(BaseGame):
         elif move not in self.moves_for_player[userid]:
             return False
         self.make_move_for_active_player(move)
-        self.active_player_index = (self.active_player_index + 1) % len(self.turn_order)
         self.find_moves()
+        #persist to database here
         return True
     def make_move_for_active_player(self, move):
         raise NotImplementedError()
+    def advance_turn(self):
+        self.active_player_index = (self.active_player_index + 1) % len(self.turn_order)
     def get_lobby_view(self):
         if not self.started:
             p = [self.playernicks[uid] for uid in self.playerids]
@@ -118,7 +121,41 @@ class SquareSubtractionGame(TurnBasedGame):
         self.number -= int(move)
         if self.number == 0:
             self.winner = self.active_userid
+        self.advance_turn()
     def get_user_view(self, userid):
         result = super(SquareSubtractionGame, self).get_user_view(userid)
         result['number'] = self.number
+        return result
+
+class SimpleCardGame(TurnBasedGame):
+    min_players = 2
+    max_players = 2
+    def start(self, *args):
+        cards = list(range(1,6)) * 5
+        random.shuffle(cards)
+        self.hands = {}
+        self.hands[self.playerids[0]] = cards[0:5]
+        self.hands[self.playerids[1]] = cards[5:10]
+        self.deck = cards[10:]
+        self.current_total = 0
+        super(SimpleCardGame, self).start()
+    def find_moves_for_active_player(self):
+        yield from sorted(set(self.hands[self.active_userid]))
+    def make_move_for_active_player(self, move):
+        self.current_total = self.current_total + int(move)
+        self.hands[self.active_userid].remove(int(move))
+        if self.current_total == 21:
+            self.winner = self.active_userid
+        elif self.current_total > 21:
+            self.winner = self.turn_order[1 - self.active_player_index]
+        else:
+            self.hands[self.active_userid].append(self.deck.pop())
+        self.advance_turn()
+    def get_user_view(self, userid):
+        result = super(SimpleCardGame, self).get_user_view(userid)
+        result['current_total'] = self.current_total
+        result['deck_count'] = len(self.deck)
+        result['hand_counts'] = {self.playernicks[uid]: len(self.hands[uid]) for uid in self.playerids}
+        if userid in self.playerids:
+            result['my_hand'] = self.hands[userid]
         return result

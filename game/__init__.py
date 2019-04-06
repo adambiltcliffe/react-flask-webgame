@@ -32,7 +32,15 @@ class BaseGame:
     def start(self):
         if len(self.playerids) < self.min_players:
             raise GameNotFullError()
+        self.setup()
         self.started = True
+        self.history = []
+        self.last_views = {}
+        self.current_step_log = []
+        self.log('Game started.')
+        self.complete_step()
+    def setup(self):
+        pass
     def get_channel_for_user(self, userid):
         if userid in self.playerids:
             return f'{self.gameid}-player-{userid}'
@@ -45,10 +53,27 @@ class BaseGame:
     def get_channel_views(self):
         for uid in self.playerids + ['anonymous']:
             yield (self.get_channel_for_user(uid), self.get_user_view(uid))
+    def log(self, message):
+        self.current_step_log.append(message)
+    def complete_step(self):
+        step = {'text': ' '.join(self.current_step_log), 'view_deltas': {}}
+        for uid in self.playerids + ['anonymous']:
+            v = self.get_user_view(uid)
+            step['view_deltas'][uid] = self.make_view_delta(self.last_views.get(uid, {}), v)
+            self.last_views[uid] = v
+        self.history.append(step)
+        print(step)
+        self.current_step_log = []
+    def make_view_delta(self, old, new):
+        result = {}
+        for k in new:
+            if k not in old or old[k] != new[k]:
+                result[k] = new[k]
+        return result
 
 class TurnBasedGame(BaseGame):
-    def start(self, *args):
-        super(TurnBasedGame, self).start(*args)
+    def setup(self):
+        super(TurnBasedGame, self).setup()
         self.turn_order = self.playerids[:]
         random.shuffle(self.turn_order)
         self.active_player_index = 0
@@ -78,6 +103,7 @@ class TurnBasedGame(BaseGame):
             return False
         self.make_move_for_active_player(move)
         self.find_moves()
+        self.complete_step()
         #persist to database here
         return True
     def make_move_for_active_player(self, move):
@@ -100,7 +126,7 @@ class TurnBasedGame(BaseGame):
         except ValueError:
             idx = None
         view['my_player_index'] = idx
-        view['winner'] = self.winner
+        view['winner'] = self.playernicks[self.winner] if self.winner else None
         if userid in self.moves_for_player:
             view['my_moves'] = self.moves_for_player[userid][:]
         else:
@@ -110,9 +136,9 @@ class TurnBasedGame(BaseGame):
 class SquareSubtractionGame(TurnBasedGame):
     min_players = 2
     max_players = 2
-    def start(self, *args):
+    def setup(self, *args):
         self.number = 30
-        super(SquareSubtractionGame, self).start()
+        super(SquareSubtractionGame, self).setup()
     def find_moves_for_active_player(self):
         n = 1
         while n ** 2 <= self.number:
@@ -131,7 +157,7 @@ class SquareSubtractionGame(TurnBasedGame):
 class SimpleCardGame(TurnBasedGame):
     min_players = 2
     max_players = 2
-    def start(self, *args):
+    def setup(self, *args):
         cards = list(range(1,6)) * 5
         random.shuffle(cards)
         self.hands = {}
@@ -139,8 +165,9 @@ class SimpleCardGame(TurnBasedGame):
         self.hands[self.playerids[1]] = cards[5:10]
         self.deck = cards[10:]
         self.current_total = 0
+        self.stack = []
         self.viewing = None
-        super(SimpleCardGame, self).start()
+        super(SimpleCardGame, self).setup()
     def find_moves_for_active_player(self):
         if self.viewing:
             yield from [['pick', n] for n in sorted(set(self.viewing))]
@@ -153,31 +180,39 @@ class SimpleCardGame(TurnBasedGame):
     def make_move_for_active_player(self, move):
         move_type = move[0]
         if move_type == 'play':
+            self.stack.append(int(move[1]))
             self.current_total = self.current_total + int(move[1])
+            self.log(f'{self.active_usernick} plays a {move[1]}, making the total {self.current_total}.')
             self.hands[self.active_userid].remove(int(move[1]))
             if self.current_total == 21:
                 self.winner = self.active_userid
+                self.log(f'{self.active_usernick} wins by reaching 21.')
             elif self.current_total > 21:
                 self.winner = self.turn_order[1 - self.active_player_index]
+                self.log(f'{self.active_usernick} went over 21. {self.playernicks[self.winner]} wins.')
             else:
                 self.hands[self.active_userid].append(self.deck.pop())
             self.advance_turn()
         elif move_type == 'discard double':
+            self.log(f'{self.active_usernick} discards a pair of {move[1]}s.')
             self.hands[self.active_userid].remove(int(move[1]))
             self.hands[self.active_userid].remove(int(move[1]))
             self.viewing = self.deck[:5]
             self.deck = self.deck[5:]
         elif move_type == 'pick':
+            self.log(f'{self.active_usernick} chooses a card from the top five of the deck.')
             self.hands[self.active_userid].append(int(move[1]))
             self.viewing.remove(int(move[1]))
             random.shuffle(self.viewing)
             self.deck.extend(self.viewing)
+            self.log(f'{len(self.viewing)} cards are shuffled and placed on the bottom.')
             self.viewing = None
             self.advance_turn()
     def get_user_view(self, userid):
         result = super(SimpleCardGame, self).get_user_view(userid)
         result['current_total'] = self.current_total
         result['deck_count'] = len(self.deck)
+        result['stack'] = self.stack
         result['hand_counts'] = {self.playernicks[uid]: len(self.hands[uid]) for uid in self.playerids}
         if userid in self.playerids:
             result['my_hand'] = self.hands[userid]

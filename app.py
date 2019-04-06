@@ -29,7 +29,6 @@ def make_game(id1, id2):
 make_game('test-albus', 'test-bungo')
 make_game('test-albus', 'test-conan')
 make_game('test-conan', 'test-bungo')
-print(games)
 
 class Conn(object):
   def __init__(self, encoded_token):
@@ -98,7 +97,6 @@ def disconnect_user():
 @socketio.on('open_game', namespace='/game')
 def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
-  print(gameid, games)
   if gameid is not None and gameid in games:
     game = games[gameid]
     identity = conns[request.sid].identity
@@ -118,7 +116,6 @@ def test_message(data):
     if 'move' in data and game.make_move(conns[request.sid].identity, data['move']):
       for room, gv in game.get_channel_views():
         socketio.emit('update', {'gameid': gameid, 'state': gv}, room=room, namespace='/game')
-        print(f'emitting on {room}')
       socketio.emit('game_status', {'gameid': gameid, 'status': game.get_lobby_view()}, broadcast=True, namespace='/lobby')
     else:
       # Should handle the case where it was a valid move for a recent state

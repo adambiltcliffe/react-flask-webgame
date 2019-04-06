@@ -1,4 +1,5 @@
 import random
+from collections import Counter
 
 class GameFullError(Exception):
     pass
@@ -138,19 +139,41 @@ class SimpleCardGame(TurnBasedGame):
         self.hands[self.playerids[1]] = cards[5:10]
         self.deck = cards[10:]
         self.current_total = 0
+        self.viewing = None
         super(SimpleCardGame, self).start()
     def find_moves_for_active_player(self):
-        yield from sorted(set(self.hands[self.active_userid]))
-    def make_move_for_active_player(self, move):
-        self.current_total = self.current_total + int(move)
-        self.hands[self.active_userid].remove(int(move))
-        if self.current_total == 21:
-            self.winner = self.active_userid
-        elif self.current_total > 21:
-            self.winner = self.turn_order[1 - self.active_player_index]
+        if self.viewing:
+            yield from [['pick', n] for n in sorted(set(self.viewing))]
         else:
-            self.hands[self.active_userid].append(self.deck.pop())
-        self.advance_turn()
+            yield from [['play', n] for n in sorted(set(self.hands[self.active_userid]))]
+            c = Counter(self.hands[self.active_userid])
+            for v in c:
+                if c[v] > 1:
+                    yield ['discard double', v]
+    def make_move_for_active_player(self, move):
+        move_type = move[0]
+        if move_type == 'play':
+            self.current_total = self.current_total + int(move[1])
+            self.hands[self.active_userid].remove(int(move[1]))
+            if self.current_total == 21:
+                self.winner = self.active_userid
+            elif self.current_total > 21:
+                self.winner = self.turn_order[1 - self.active_player_index]
+            else:
+                self.hands[self.active_userid].append(self.deck.pop())
+            self.advance_turn()
+        elif move_type == 'discard double':
+            self.hands[self.active_userid].remove(int(move[1]))
+            self.hands[self.active_userid].remove(int(move[1]))
+            self.viewing = self.deck[:5]
+            self.deck = self.deck[5:]
+        elif move_type == 'pick':
+            self.hands[self.active_userid].append(int(move[1]))
+            self.viewing.remove(int(move[1]))
+            random.shuffle(self.viewing)
+            self.deck.extend(self.viewing)
+            self.viewing = None
+            self.advance_turn()
     def get_user_view(self, userid):
         result = super(SimpleCardGame, self).get_user_view(userid)
         result['current_total'] = self.current_total

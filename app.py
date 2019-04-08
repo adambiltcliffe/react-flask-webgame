@@ -102,20 +102,26 @@ def send_game_state_add_to_room(data):
     identity = conns[request.sid].identity
     channel = game.get_channel_for_user(identity)
     join_room(channel)
-    emit('update', {'gameid': gameid, 'state': game.get_user_view(identity)})
+    emit('update_full', {'gameid': gameid, 'state': game.get_user_view(identity), 'history': game.get_user_history(identity)})
     print(f"{identity} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID.')
 
 @socketio.on('make_move', namespace='/game')
 def test_message(data):
-  print(request.sid, data)
+  identity = conns[request.sid].identity
+  print(f"{identity} sent move data: {data}")
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
     game = games[gameid]
+    hl = len(game.history)
     if 'move' in data and game.make_move(conns[request.sid].identity, data['move']):
-      for room, gv in game.get_channel_views():
-        socketio.emit('update', {'gameid': gameid, 'state': gv}, room=room, namespace='/game')
+      if len(game.history) != hl + 1:
+        for room, sv, hv in game.get_channel_full_views():
+          socketio.emit('update_full', {'gameid': gameid, 'state': sv, 'history': hv}, room=room, namespace='/game')
+      else:
+        for room, index, step in game.get_channel_step_views():
+          socketio.emit('update_step', {'gameid': gameid, 'index': index, 'step': step}, room=room, namespace='/game')
       socketio.emit('game_status', {'gameid': gameid, 'status': game.get_lobby_view()}, broadcast=True, namespace='/lobby')
     else:
       # Should handle the case where it was a valid move for a recent state

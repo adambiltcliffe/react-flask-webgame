@@ -1,0 +1,33 @@
+.navbar {
+    background-color:#bbbbbb;
+}
+
+.winner-info {
+    font-weight: bold;
+}
+
+.card1 {
+    padding: 5px;
+    background-color:#e91796;
+    border: 1px solid black;
+}
+.card2 {
+    padding: 5px;
+    background-color:#e9172d;
+    border: 1px solid black;
+}
+.card3 {
+    padding: 5px;
+    background-color:#e96a17;
+    border: 1px solid black;
+}
+.card4 {
+    padding: 5px;
+    background-color:#e9d317;
+    border: 1px solid black;
+}
+.card5 {
+    padding: 5px;
+    background-color:#96e917;
+    border: 1px solid black;
+}

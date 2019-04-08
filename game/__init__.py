@@ -50,9 +50,14 @@ class BaseGame:
         raise NotImplementedError()
     def get_user_view(self, userid):
         raise NotImplementedError()
-    def get_channel_views(self):
+    def get_channel_full_views(self):
         for uid in self.playerids + ['anonymous']:
-            yield (self.get_channel_for_user(uid), self.get_user_view(uid))
+            yield (self.get_channel_for_user(uid), self.get_user_view(uid), self.get_user_history(uid))
+    def get_channel_step_views(self):
+        for uid in self.playerids + ['anonymous']:
+            step = self.history[-1]
+            sv = {'text': step['text'], 'state': step['view_deltas'][uid]}
+            yield (self.get_channel_for_user(uid), len(self.history)-1, sv)
     def log(self, message):
         self.current_step_log.append(message)
     def complete_step(self):
@@ -62,8 +67,11 @@ class BaseGame:
             step['view_deltas'][uid] = self.make_view_delta(self.last_views.get(uid, {}), v)
             self.last_views[uid] = v
         self.history.append(step)
-        print(step)
         self.current_step_log = []
+    def get_user_history(self, uid):
+        if uid not in self.playerids:
+            uid = 'anonymous'
+        return [{'text': h['text'], 'state': h['view_deltas'][uid]} for h in self.history]
     def make_view_delta(self, old, new):
         result = {}
         for k in new:
@@ -93,7 +101,7 @@ class TurnBasedGame(BaseGame):
     def find_moves_for_active_player(self):
         raise NotImplementedError()
     def make_move(self, userid, move):
-        if move == 'restart':
+        if move == 'restart' and self.winner is not None and userid in self.playerids:
             self.winner = None
             self.start()
             return True
@@ -212,8 +220,8 @@ class SimpleCardGame(TurnBasedGame):
         result = super(SimpleCardGame, self).get_user_view(userid)
         result['current_total'] = self.current_total
         result['deck_count'] = len(self.deck)
-        result['stack'] = self.stack
+        result['stack'] = self.stack[:]
         result['hand_counts'] = {self.playernicks[uid]: len(self.hands[uid]) for uid in self.playerids}
         if userid in self.playerids:
-            result['my_hand'] = self.hands[userid]
+            result['my_hand'] = self.hands[userid][:]
         return result

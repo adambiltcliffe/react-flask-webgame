@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ButtonRow from './ButtonRow'
+import CardGameTextBox from './CardGameTextBox'
+import GameLog from './GameLog'
 import io from 'socket.io-client';
 
 function GameClient(props) {
@@ -8,6 +10,7 @@ function GameClient(props) {
   const [error, setError] = useState(null)
   const [socket, setSocket] = useState(null)
   const [game, setGame] = useState({})
+  const [history, setHistory] = useState([])
 
   function sendMessage(message, data) {
     socket.emit(message, data)
@@ -22,14 +25,37 @@ function GameClient(props) {
       console.log('requesting load')
       sock.emit('open_game', {gameid: props.gameid})
     })
-    sock.on('update', (data) => {
+    sock.on('update_full', (data) => {
       console.log('Received update')
       console.log(JSON.stringify(data))
-      var gameid, state
-      ({ gameid, state } = data)
+      let gameid, state, newHistory
+      ({ gameid, state, history: newHistory } = data)
       if (gameid == props.gameid) {
-        setGame(state)
+        setHistory(newHistory)
+        console.log("Here comes the past!")
+        let computedState = {}
+        newHistory.map((obj) => {computedState = {...computedState, ...(obj.state)}})
+        console.log('Received state:', state)
+        console.log('Computed state:', computedState)
+        setGame(computedState)
         setLoaded(true)
+      }
+      else {
+        console.log('Ignoring it ...')
+      }
+    })
+    sock.on('update_step', (data) => {
+      console.log('Received update')
+      console.log(JSON.stringify(data))
+      let gameid, index, step, currentHistory, currentGame
+      ({ gameid, index, step } = data)
+      // get the current value at the time the handler is called
+      setHistory((h) => {currentHistory = h; return h})
+      setGame((g) => {currentGame = g; return g})
+      if (gameid == props.gameid && index == currentHistory.length) {
+        setHistory(currentHistory.concat([step]))
+        console.log("Taking a step")
+        setGame({...currentGame, ...step.state})
       }
       else {
         console.log('Ignoring it ...')
@@ -57,9 +83,10 @@ function GameClient(props) {
     buttonRow = <ButtonRow moves={game.my_moves} send={sendMessage} gameid={props.gameid} />
   }
   return (<div>
-    <p>Current game state: {JSON.stringify(game)}.</p>
+    <CardGameTextBox game={game} />
     {buttonRow}
-    <p>All props: {JSON.stringify(props)}</p>
+    <GameLog history={history} />
+    {/* <p>All props: {JSON.stringify(props)}</p> */}
   </div>);
 }
 

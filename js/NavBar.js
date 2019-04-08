@@ -55,7 +55,7 @@ function NavBar(props) {
                       </Switch>)
 
   if (props.authNickname) {
-    return (<div>
+    return (<div className="navbar">
       This is the nav bar!
       Logged in as {props.authNickname}.
       <form onSubmit={handleLogout}>
@@ -66,7 +66,7 @@ function NavBar(props) {
 
   }
   else {
-    return (<div>
+    return (<div className="navbar">
       This is the nav bar!
       (Not currently logged in.)
       <form onSubmit={handleLogin}>

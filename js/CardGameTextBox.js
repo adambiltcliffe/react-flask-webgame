@@ -1,4 +1,5 @@
 import React from 'react';
+import Card from './Card';
 
 function CardGameTextBox(props) {
   let pix = props.game.my_player_index
@@ -9,17 +10,21 @@ function CardGameTextBox(props) {
   else {
     playerList = props.game.players[0] + ' vs. ' + props.game.players[1]
   }
+  let stack = props.game.stack.map((n, idx) => { return <Card key={idx} value={n} /> })
   let otherHands = Object.entries(props.game.hand_counts).map((kv) => {
     const [k, v] = kv
-    console.log(k, v)
     if (props.game.players[props.game.my_player_index] == k) { return null }
-    return <p key={k}>{k} has {v} cards in hand.</p>
+    let hiddenCards = [];
+    for (let i=0; i<v; i++) {
+      hiddenCards.push(<Card key={i} value="?" />)
+    }
+    return <div className="para" key={k}>{k}: {hiddenCards}</div>
   })
   let myHand = null;
   if (props.game.my_hand) {
-    myHand = <p>Your hand: {props.game.my_hand.map((n, idx) => {
-      return <span key={idx} className={"card"+n}>{n}</span>
-    })}</p>
+    myHand = <div className="para">You: {props.game.my_hand.map((n, idx) => {
+      return <Card key={idx} value={n} />
+    })}</div>
   }
   let winnerInfo = null;
   if (props.game.winner) {
@@ -28,10 +33,13 @@ function CardGameTextBox(props) {
   return (<>
             <p>{playerList}</p>
             <p>Current player: {props.game.turn}</p>
-            <p>Played cards: {props.game.stack} (Total: {props.game.current_total})</p>
+            <div>Played cards: {stack} (Total: {props.game.current_total})</div>
             <p>{props.game.deck_count} cards in deck.</p>
-            {otherHands}
-            {myHand}
+            <div className="boxed">
+              <p>Cards in hand</p>
+              {otherHands}
+              {myHand}
+            </div>
             {winnerInfo}
           </>);
 }

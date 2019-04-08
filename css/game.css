@@ -6,28 +6,57 @@
     font-weight: bold;
 }
 
-.card1 {
+.para {
+    display: block;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.boxed {
+    border: 1px solid black;
+    padding-left: 10px;
+}
+
+.card-1 {
     padding: 5px;
     background-color:#e91796;
     border: 1px solid black;
 }
-.card2 {
+.card-2 {
     padding: 5px;
     background-color:#e9172d;
     border: 1px solid black;
 }
-.card3 {
+.card-3 {
     padding: 5px;
     background-color:#e96a17;
     border: 1px solid black;
 }
-.card4 {
+.card-4 {
     padding: 5px;
     background-color:#e9d317;
     border: 1px solid black;
 }
-.card5 {
+.card-5 {
     padding: 5px;
     background-color:#96e917;
     border: 1px solid black;
+}
+.card-unknown {
+    padding: 5px;
+    background-color:#969696;
+    border: 1px solid black;
+}
+
+.card-container {
+    position: relative;
+}
+.card-popup {
+    position: absolute;
+    left: 50%;
+    top: 30%;
+    z-index: 1;
+    background-color: white;
+    border: solid 1px black;
+    padding: 5px;
 }

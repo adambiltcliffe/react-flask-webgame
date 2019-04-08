@@ -130,4 +130,4 @@ def test_message(data):
     emit('client_error', 'Bad game ID.')
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app, host='0.0.0.0')

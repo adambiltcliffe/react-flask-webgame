@@ -1,3 +1,4 @@
+import json_delta
 import random
 from collections import Counter
 
@@ -56,7 +57,7 @@ class BaseGame:
     def get_channel_step_views(self):
         for uid in self.playerids + ['anonymous']:
             step = self.history[-1]
-            sv = {'text': step['text'], 'state': step['view_deltas'][uid]}
+            sv = {'text': step['text'], 'delta': step['view_deltas'][uid]}
             yield (self.get_channel_for_user(uid), len(self.history)-1, sv)
     def log(self, message):
         self.current_step_log.append(message)
@@ -64,20 +65,14 @@ class BaseGame:
         step = {'text': ' '.join(self.current_step_log), 'view_deltas': {}}
         for uid in self.playerids + ['anonymous']:
             v = self.get_user_view(uid)
-            step['view_deltas'][uid] = self.make_view_delta(self.last_views.get(uid, {}), v)
+            step['view_deltas'][uid] = json_delta.diff(self.last_views.get(uid, {}), v, verbose=False)
             self.last_views[uid] = v
         self.history.append(step)
         self.current_step_log = []
     def get_user_history(self, uid):
         if uid not in self.playerids:
             uid = 'anonymous'
-        return [{'text': h['text'], 'state': h['view_deltas'][uid]} for h in self.history]
-    def make_view_delta(self, old, new):
-        result = {}
-        for k in new:
-            if k not in old or old[k] != new[k]:
-                result[k] = new[k]
-        return result
+        return [{'text': h['text'], 'delta': h['view_deltas'][uid]} for h in self.history]
 
 class TurnBasedGame(BaseGame):
     def setup(self):

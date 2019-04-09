@@ -1,8 +1,15 @@
+import './vendor/json_delta';
 import React, { useEffect, useState } from 'react';
 import ButtonRow from './ButtonRow'
 import CardGameTextBox from './CardGameTextBox'
 import GameLog from './GameLog'
 import io from 'socket.io-client';
+
+function nonDestructivePatch(oldStruc, patch) {
+  /* This is inefficient and should eventually be fixed by rewriting JSON_delta */
+  const newStruc = JSON.parse(JSON.stringify(oldStruc))
+  return JSON_delta.patch(newStruc, patch)
+}
 
 function GameClient(props) {
   const [isConnected, setConnected] = useState(false)
@@ -26,26 +33,17 @@ function GameClient(props) {
       sock.emit('open_game', {gameid: props.gameid})
     })
     sock.on('update_full', (data) => {
-      console.log('Received update')
-      console.log(JSON.stringify(data))
       let gameid, state, newHistory
       ({ gameid, state, history: newHistory } = data)
       if (gameid == props.gameid) {
         setHistory(newHistory)
-        console.log("Here comes the past!")
         let computedState = {}
-        newHistory.map((obj) => {computedState = {...computedState, ...(obj.state)}})
-        console.log('Received state:', state)
-        console.log('Computed state:', computedState)
+        newHistory.map((obj) => {computedState = nonDestructivePatch(computedState, obj.delta)})
         setGame(computedState)
         setLoaded(true)
       }
-      else {
-        console.log('Ignoring it ...')
-      }
     })
     sock.on('update_step', (data) => {
-      console.log('Received update')
       console.log(JSON.stringify(data))
       let gameid, index, step, currentHistory, currentGame
       ({ gameid, index, step } = data)
@@ -54,11 +52,7 @@ function GameClient(props) {
       setGame((g) => {currentGame = g; return g})
       if (gameid == props.gameid && index == currentHistory.length) {
         setHistory(currentHistory.concat([step]))
-        console.log("Taking a step")
-        setGame({...currentGame, ...step.state})
-      }
-      else {
-        console.log('Ignoring it ...')
+        setGame(nonDestructivePatch(currentGame, step.delta))
       }
     })
     sock.on('client_error', (msg) => {

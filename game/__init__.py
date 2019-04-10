@@ -1,6 +1,7 @@
 import json_delta
 import random
 from collections import Counter
+from game.meta import GameMetaInfo
 
 class GameFullError(Exception):
     pass
@@ -18,23 +19,19 @@ class BaseGame:
     min_players = 2
     max_players = 2
     def __init__(self, gameid):
-        self.gameid = gameid
-        self.started = False
-        self.winner = None
-        self.playerids = []
-        self.playernicks = {}
+        self.meta = GameMetaInfo(gameid=gameid)
     def add_player(self, userid, nick):
-        if len(self.playerids) == self.max_players:
+        if len(self.meta.players) == self.max_players:
             raise GameFullError()
-        if self.started:
+        if self.meta.status != 'waiting':
             raise GameAlreadyStartedError()
-        self.playerids.append(userid)
-        self.playernicks[userid] = nick
+        self.meta.players.append(userid)
+        self.meta.playernicks[userid] = nick
     def start(self):
-        if len(self.playerids) < self.min_players:
+        if len(self.meta.players) < self.min_players:
             raise GameNotFullError()
         self.setup()
-        self.started = True
+        self.meta.status = 'started'
         self.history = []
         self.last_views = {}
         self.current_step_log = []
@@ -43,19 +40,19 @@ class BaseGame:
     def setup(self):
         pass
     def get_channel_for_user(self, userid):
-        if userid in self.playerids:
-            return f'{self.gameid}-player-{userid}'
+        if userid in self.meta.players:
+            return f'{self.meta.gameid}-player-{userid}'
         else:
-            return f'{self.gameid}-observers'
+            return f'{self.meta.gameid}-observers'
     def get_lobby_view(self):
         raise NotImplementedError()
     def get_user_view(self, userid):
         raise NotImplementedError()
     def get_channel_full_views(self):
-        for uid in self.playerids + ['anonymous']:
+        for uid in self.meta.players + ['anonymous']:
             yield (self.get_channel_for_user(uid), self.get_user_view(uid), self.get_user_history(uid))
     def get_channel_step_views(self):
-        for uid in self.playerids + ['anonymous']:
+        for uid in self.meta.players + ['anonymous']:
             step = self.history[-1]
             sv = {'text': step['text'], 'delta': step['view_deltas'][uid]}
             yield (self.get_channel_for_user(uid), len(self.history)-1, sv)
@@ -63,21 +60,21 @@ class BaseGame:
         self.current_step_log.append(message)
     def complete_step(self):
         step = {'text': ' '.join(self.current_step_log), 'view_deltas': {}}
-        for uid in self.playerids + ['anonymous']:
+        for uid in self.meta.players + ['anonymous']:
             v = self.get_user_view(uid)
             step['view_deltas'][uid] = json_delta.diff(self.last_views.get(uid, {}), v, verbose=False)
             self.last_views[uid] = v
         self.history.append(step)
         self.current_step_log = []
     def get_user_history(self, uid):
-        if uid not in self.playerids:
+        if uid not in self.meta.players:
             uid = 'anonymous'
         return [{'text': h['text'], 'delta': h['view_deltas'][uid]} for h in self.history]
 
 class TurnBasedGame(BaseGame):
     def setup(self):
         super(TurnBasedGame, self).setup()
-        self.turn_order = self.playerids[:]
+        self.turn_order = self.meta.players[:]
         random.shuffle(self.turn_order)
         self.active_player_index = 0
         self.find_moves()
@@ -86,18 +83,18 @@ class TurnBasedGame(BaseGame):
         return self.turn_order[self.active_player_index]
     @property
     def active_usernick(self):
-        return self.playernicks[self.active_userid]
+        return self.meta.playernicks[self.active_userid]
     def find_moves(self):
-        if self.winner is not None:
-            self.moves_for_player = {p: ['restart'] for p in self.playerids}
+        if self.meta.winner is not None:
+            self.moves_for_player = {p: ['restart'] for p in self.meta.players}
         else:
-            self.moves_for_player = {p: [] for p in self.playerids}
+            self.moves_for_player = {p: [] for p in self.meta.players}
             self.moves_for_player[self.active_userid] = list(self.find_moves_for_active_player())
     def find_moves_for_active_player(self):
         raise NotImplementedError()
     def make_move(self, userid, move):
-        if move == 'restart' and self.winner is not None and userid in self.playerids:
-            self.winner = None
+        if move == 'restart' and self.meta.winner is not None and userid in self.meta.players:
+            self.meta.winner = None
             self.start()
             return True
         elif userid != self.active_userid:
@@ -114,14 +111,13 @@ class TurnBasedGame(BaseGame):
     def advance_turn(self):
         self.active_player_index = (self.active_player_index + 1) % len(self.turn_order)
     def get_lobby_view(self):
-        if not self.started:
-            p = [self.playernicks[uid] for uid in self.playerids]
+        if self.meta.status == 'waiting':
+            p = [self.meta.playernicks[uid] for uid in self.meta.players]
             return {'players': p, 'status': 'waiting'}
-        p = [self.playernicks[uid] for uid in self.turn_order]
-        status = 'active' if self.winner is None else 'finished'
-        return {'players': p, 'turn': self.active_usernick, 'status': status}
+        p = [self.meta.playernicks[uid] for uid in self.turn_order]
+        return {'players': p, 'turn': self.active_usernick, 'status': self.meta.status}
     def get_user_view(self, userid):
-        if not self.started:
+        if self.meta.status == 'waiting':
             raise GameNotStartedError()
         view = self.get_lobby_view()
         try:
@@ -129,7 +125,7 @@ class TurnBasedGame(BaseGame):
         except ValueError:
             idx = None
         view['my_player_index'] = idx
-        view['winner'] = self.playernicks[self.winner] if self.winner else None
+        view['winner'] = self.meta.playernicks[self.meta.winner] if self.meta.winner else None
         if userid in self.moves_for_player:
             view['my_moves'] = self.moves_for_player[userid][:]
         else:
@@ -164,8 +160,8 @@ class SimpleCardGame(TurnBasedGame):
         cards = list(range(1,6)) * 5
         random.shuffle(cards)
         self.hands = {}
-        self.hands[self.playerids[0]] = cards[0:5]
-        self.hands[self.playerids[1]] = cards[5:10]
+        self.hands[self.meta.players[0]] = cards[0:5]
+        self.hands[self.meta.players[1]] = cards[5:10]
         self.deck = cards[10:]
         self.current_total = 0
         self.stack = []
@@ -188,11 +184,11 @@ class SimpleCardGame(TurnBasedGame):
             self.log(f'{self.active_usernick} plays a {move[1]}, making the total {self.current_total}.')
             self.hands[self.active_userid].remove(int(move[1]))
             if self.current_total == 21:
-                self.winner = self.active_userid
+                self.meta.winner = self.active_userid
                 self.log(f'{self.active_usernick} wins by reaching 21.')
             elif self.current_total > 21:
-                self.winner = self.turn_order[1 - self.active_player_index]
-                self.log(f'{self.active_usernick} went over 21. {self.playernicks[self.winner]} wins.')
+                self.meta.winner = self.turn_order[1 - self.active_player_index]
+                self.log(f'{self.active_usernick} went over 21. {self.meta.playernicks[self.meta.winner]} wins.')
             else:
                 self.hands[self.active_userid].append(self.deck.pop())
             self.advance_turn()
@@ -216,7 +212,7 @@ class SimpleCardGame(TurnBasedGame):
         result['current_total'] = self.current_total
         result['deck_count'] = len(self.deck)
         result['stack'] = self.stack[:]
-        result['hand_counts'] = {self.playernicks[uid]: len(self.hands[uid]) for uid in self.playerids}
-        if userid in self.playerids:
+        result['hand_counts'] = {self.meta.playernicks[uid]: len(self.hands[uid]) for uid in self.meta.players}
+        if userid in self.meta.players:
             result['my_hand'] = self.hands[userid][:]
         return result

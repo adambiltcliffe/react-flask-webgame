@@ -1,3 +1,6 @@
+/* Hack to disable font boosting on Chrome for Android */
+html * {max-height:1000000px;}
+
 .navbar {
     background-color:#bbbbbb;
 }

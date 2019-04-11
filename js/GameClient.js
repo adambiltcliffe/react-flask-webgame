@@ -1,9 +1,8 @@
-import './vendor/json_delta';
-import React, { useEffect, useState } from 'react';
-import ButtonRow from './ButtonRow'
-import CardGameTextBox from './CardGameTextBox'
-import GameLog from './GameLog'
-import io from 'socket.io-client';
+import './vendor/json_delta'
+import React, { useEffect, useState } from 'react'
+import CardGameRenderer from './CardGameRenderer'
+import DefaultRenderer from './DefaultRenderer'
+import io from 'socket.io-client'
 
 function nonDestructivePatch(oldStruc, patch) {
   /* This is inefficient and should eventually be fixed by rewriting JSON_delta */
@@ -19,8 +18,8 @@ function GameClient(props) {
   const [game, setGame] = useState({})
   const [history, setHistory] = useState([])
 
-  function sendMessage(message, data) {
-    socket.emit(message, data)
+  function dispatchAction(action_data) {
+    socket.emit('game_action', {action: action_data, gameid: props.gameid})
   }
 
   // Side effects
@@ -72,16 +71,13 @@ function GameClient(props) {
   if (!isLoaded) {
     return <div>Loading game ...</div>
   }
-  var buttonRow = null;
-  if (game.my_moves) {
-    buttonRow = <ButtonRow moves={game.my_moves} send={sendMessage} gameid={props.gameid} />
+  switch(game.game_type) {
+    case 'example_card':
+      return <CardGameRenderer gameid={props.gameid} game={game} history={history} dispatchAction={dispatchAction} />
+    default:
+      return <DefaultRenderer gameid={props.gameid} game={game} history={history} dispatchAction={dispatchAction} />
   }
-  return (<div>
-    <CardGameTextBox game={game} />
-    {buttonRow}
-    <GameLog history={history} />
-    {/* <p>All props: {JSON.stringify(props)}</p> */}
-  </div>);
+
 }
 
 export default GameClient;

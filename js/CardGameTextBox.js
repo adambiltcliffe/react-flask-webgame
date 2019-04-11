@@ -4,7 +4,7 @@ import Card from './Card';
 function CardGameTextBox(props) {
   let pix = props.game.my_player_index
   let playerList
-  if (pix !== null) {
+  if (pix !== undefined) {
     playerList = props.game.playernicks[props.game.players[pix]] + ' (you) vs. ' + props.game.playernicks[props.game.players[1 - pix]]
   }
   else {

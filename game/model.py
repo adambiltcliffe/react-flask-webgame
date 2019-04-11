@@ -15,7 +15,9 @@ class BaseModel(jo.JsonObject):
     def get_start_message(self):
         return 'Game started.'
     def get_lobby_view(self):
-        raise NotImplementedError()
+        return {'game_type': self.config.game_type,
+                'players': self.turn_order.copy(),
+                'playernicks': self.config.playernicks.copy()}
     def get_public_view(self):
         raise NotImplementedError()
     def get_player_view(self, userid):
@@ -64,9 +66,9 @@ class TurnBasedModel(BaseModel):
     def advance_turn(self):
         self.active_player_index = (self.active_player_index + 1) % len(self.turn_order)
     def get_lobby_view(self):
-        return {'players': self.turn_order.copy(),
-                'playernicks': self.config.playernicks.copy(),
-                'turn': self.active_userid}
+        result = super(TurnBasedModel, self).get_lobby_view()
+        result['turn'] = self.active_userid
+        return result
     def get_public_view(self):
         result = self.get_lobby_view()
         result['result'] = self.result
@@ -89,11 +91,13 @@ class SquareSubtractionModel(TurnBasedModel):
             n += 1
     def apply_action_for_active_player(self, move, log_callback):
         self.number -= int(move)
+        log_callback(f'{self.active_usernick} chooses {move}.')
         if self.number == 0:
             self.result = {'winner': self.active_userid}
+            log_callback(f'{self.active_usernick} wins!')
         self.advance_turn()
     def get_public_view(self):
-        result = super(SquareSubtractionModel, self).get_user_view(userid)
+        result = super(SquareSubtractionModel, self).get_public_view()
         result['number'] = self.number
         return result
 

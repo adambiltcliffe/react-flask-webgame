@@ -1,6 +1,5 @@
 import json_delta
 import random
-from json import dumps, loads
 from game.config import GameConfig
 from game.history import HistoryStep
 from game.model import BaseModel, SquareSubtractionModel, ExampleCardGameModel
@@ -24,8 +23,9 @@ class BaseGame:
     min_players = 2
     max_players = 2
     model_class = BaseModel
+    type_string = None
     def __init__(self, gameid):
-        self.temp_config = GameConfig(gameid=gameid)
+        self.temp_config = GameConfig(gameid=gameid, game_type=self.type_string)
         self.model = None
         self.history = []
     @property
@@ -103,9 +103,11 @@ class BaseGame:
 class SquareSubtractionGame(BaseGame):
     min_players = 2
     max_players = 2
+    type_string = 'subtract_square'
     model_class = SquareSubtractionModel
 
 class ExampleCardGame(BaseGame):
     min_players = 2
     max_players = 2
+    type_string = 'example_card'
     model_class = ExampleCardGameModel

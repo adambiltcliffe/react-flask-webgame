@@ -9,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_socketio import SocketIO, emit, join_room
 from jwt import DecodeError
 
-from game import ExampleCardGame, IllegalAction
+from game import ExampleCardGame, SquareSubtractionGame, IllegalAction
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
@@ -19,16 +19,16 @@ jwt = JWTManager(app)
 users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the Destroyer'}
 next_game_id = [1]
 games = {}
-def make_game(id1, id2):
-  g = ExampleCardGame(next_game_id[0])
+def make_game(c, id1, id2):
+  g = c(next_game_id[0])
   g.add_player(id1, users[id1])
   g.add_player(id2, users[id2])
   g.start()
   games[str(next_game_id[0])] = g
   next_game_id[0] += 1
-make_game('test-albus', 'test-bungo')
-make_game('test-albus', 'test-conan')
-make_game('test-conan', 'test-bungo')
+make_game(ExampleCardGame, 'test-albus', 'test-bungo')
+make_game(ExampleCardGame, 'test-albus', 'test-conan')
+make_game(SquareSubtractionGame, 'test-conan', 'test-bungo')
 
 class Conn(object):
   def __init__(self, encoded_token):

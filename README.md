@@ -3,15 +3,11 @@ TO-DO LIST
 
 Extend prompts system
 
-Move prompt response logic out of individual UI components into shared callback
-
 Make sure actions are dicts (if needed?)
 
 Cache legal actions to avoid recomputing for validation
 
 Remove the ability to restart games once no longer needed for testing
-
-Explicitly support multiple game types
 
 Set up replayable game actions on client
 

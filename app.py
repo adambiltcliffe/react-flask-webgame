@@ -9,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_socketio import SocketIO, emit, join_room
 from jwt import DecodeError
 
-from game import SimpleCardGame
+from game import ExampleCardGame, IllegalAction
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
@@ -20,7 +20,7 @@ users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the 
 next_game_id = [1]
 games = {}
 def make_game(id1, id2):
-  g = SimpleCardGame(next_game_id[0])
+  g = ExampleCardGame(next_game_id[0])
   g.add_player(id1, users[id1])
   g.add_player(id2, users[id2])
   g.start()
@@ -72,7 +72,7 @@ def connect_new_lobby_user():
   conns[request.sid] = Conn(request.args.get("token"))
   identity = conns[request.sid].identity
   print(f"{identity} connected to lobby namespace")
-  gamelist = {gameid: games[gameid].get_lobby_view() for gameid in games}
+  gamelist = {gameid: games[gameid].model.get_lobby_view() for gameid in games}
   emit('games_list', {'gamelist': gamelist})
 
 @socketio.on('disconnect', namespace='/lobby')
@@ -102,32 +102,27 @@ def send_game_state_add_to_room(data):
     identity = conns[request.sid].identity
     channel = game.get_channel_for_user(identity)
     join_room(channel)
-    emit('update_full', {'gameid': gameid, 'state': game.get_user_view(identity), 'history': game.get_user_history(identity)})
+    emit('update_full', game.get_full_update(identity))
     print(f"{identity} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID.')
 
-@socketio.on('make_move', namespace='/game')
-def test_message(data):
+@socketio.on('game_action', namespace='/game')
+def game_action(data):
   identity = conns[request.sid].identity
   print(f"{identity} sent move data: {data}")
   gameid = data.get('gameid', None)
-  if gameid is not None and gameid in games:
-    game = games[gameid]
-    hl = len(game.history)
-    if 'move' in data and game.make_move(conns[request.sid].identity, data['move']):
-      if len(game.history) != hl + 1:
-        for room, sv, hv in game.get_channel_full_views():
-          socketio.emit('update_full', {'gameid': gameid, 'state': sv, 'history': hv}, room=room, namespace='/game')
-      else:
-        for room, index, step in game.get_channel_step_views():
-          socketio.emit('update_step', {'gameid': gameid, 'index': index, 'step': step}, room=room, namespace='/game')
-      socketio.emit('game_status', {'gameid': gameid, 'status': game.get_lobby_view()}, broadcast=True, namespace='/lobby')
-    else:
-      # Should handle the case where it was a valid move for a recent state
-      emit('client_error', f'Invalid move data. {data}')
-  else:
+  if gameid is None or gameid not in games:
     emit('client_error', 'Bad game ID.')
+  elif 'action' not in data:
+    emit('client_error', 'Missing action data.')
+  else:
+    try:
+      for channel, message_type, data in games[gameid].handle_action(conns[request.sid].identity, data['action']):
+        socketio.emit(message_type, data, room=channel, namespace='/game')
+      socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].model.get_lobby_view()}, broadcast=True, namespace='/lobby')
+    except IllegalAction:
+      emit('client_error', f'Illegal action data: {data}')
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')

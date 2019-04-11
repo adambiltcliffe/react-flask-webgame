@@ -5,10 +5,10 @@ function CardGameTextBox(props) {
   let pix = props.game.my_player_index
   let playerList
   if (pix !== null) {
-    playerList = props.game.players[pix] + ' (you) vs. ' + props.game.players[1 - pix]
+    playerList = props.game.playernicks[props.game.players[pix]] + ' (you) vs. ' + props.game.playernicks[props.game.players[1 - pix]]
   }
   else {
-    playerList = props.game.players[0] + ' vs. ' + props.game.players[1]
+    playerList = props.game.playernicks[props.game.players[0]] + ' vs. ' + props.game.playernicks[props.game.players[1]]
   }
   let stack = props.game.stack.map((n, idx) => { return <Card key={idx} value={n} /> })
   let otherHands = Object.entries(props.game.hand_counts).map((kv) => {
@@ -18,7 +18,7 @@ function CardGameTextBox(props) {
     for (let i=0; i<v; i++) {
       hiddenCards.push(<Card key={i} value="?" />)
     }
-    return <div className="para" key={k}>{k}: {hiddenCards}</div>
+    return <div className="para" key={k}>{props.game.playernicks[k]}: {hiddenCards}</div>
   })
   let myHand = null;
   if (props.game.my_hand) {
@@ -32,7 +32,7 @@ function CardGameTextBox(props) {
   }
   return (<>
             <p>{playerList}</p>
-            <p>Current player: {props.game.turn}</p>
+            <p>Current player: {props.game.playernicks[props.game.turn]}</p>
             <div>Played cards: {stack} (Total: {props.game.current_total})</div>
             <p>{props.game.deck_count} cards in deck.</p>
             <div className="boxed">

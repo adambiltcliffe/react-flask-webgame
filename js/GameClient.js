@@ -33,8 +33,8 @@ function GameClient(props) {
       sock.emit('open_game', {gameid: props.gameid})
     })
     sock.on('update_full', (data) => {
-      let gameid, state, newHistory
-      ({ gameid, state, history: newHistory } = data)
+      let gameid, newHistory
+      ({ gameid, history: newHistory } = data)
       if (gameid == props.gameid) {
         setHistory(newHistory)
         let computedState = {}

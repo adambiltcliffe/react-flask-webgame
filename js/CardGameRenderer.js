@@ -6,7 +6,7 @@ import GameLog from './GameLog';
 function CardGameRenderer(props) {
   let buttonRow = null;
   if (props.game.my_moves) {
-    buttonRow = <ButtonRow moves={props.game.my_moves} send={props.sendMessage} gameid={props.gameid} />
+    buttonRow = <ButtonRow moves={props.game.my_moves} dispatchAction={props.dispatchAction} gameid={props.game.gameid} />
   }
   return (<>
             <CardGameTextBox game={props.game} />

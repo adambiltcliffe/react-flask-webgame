@@ -15,7 +15,8 @@ class BaseModel(jo.JsonObject):
     def get_start_message(self):
         return 'Game started.'
     def get_lobby_view(self):
-        return {'game_type': self.config.game_type,
+        return {'gameid': self.config.gameid,
+                'game_type': self.config.game_type,
                 'players': self.turn_order.copy(),
                 'playernicks': self.config.playernicks.copy()}
     def get_public_view(self):

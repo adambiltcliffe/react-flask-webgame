@@ -73,9 +73,9 @@ function GameClient(props) {
   }
   switch(game.game_type) {
     case 'example_card':
-      return <CardGameRenderer gameid={props.gameid} game={game} history={history} dispatchAction={dispatchAction} />
+      return <CardGameRenderer game={game} history={history} dispatchAction={dispatchAction} />
     default:
-      return <DefaultRenderer gameid={props.gameid} game={game} history={history} dispatchAction={dispatchAction} />
+      return <DefaultRenderer game={game} history={history} dispatchAction={dispatchAction} />
   }
 
 }

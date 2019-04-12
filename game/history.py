@@ -1,5 +1,8 @@
 import jsonobject as jo
 
+#pylint can't find the classes defined in jsonobject for some reason
+#pylint: disable=no-member
+
 class HistoryStep(jo.JsonObject):
     log_message = jo.StringProperty()
     public_view = jo.DefaultProperty()

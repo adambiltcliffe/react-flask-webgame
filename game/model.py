@@ -3,6 +3,9 @@ import random
 from collections import Counter
 from game.config import GameConfig
 
+#pylint can't find the classes defined in jsonobject for some reason
+#pylint: disable=no-member
+
 class BaseModel(jo.JsonObject):
     # game.status can also be WAIT or READY but in those situations a model does not exist
     config = jo.ObjectProperty(GameConfig)

@@ -1,7 +1,6 @@
 import React from 'react';
 import ButtonRow from './ButtonRow';
 import CardGameTextBox from './CardGameTextBox';
-import GameLog from './GameLog';
 
 function CardGameRenderer(props) {
   let buttonRow = null;
@@ -11,7 +10,6 @@ function CardGameRenderer(props) {
   return (<>
             <CardGameTextBox game={props.game} />
             {buttonRow}
-            <GameLog history={props.history} />
           </>)
 }
 

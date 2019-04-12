@@ -7,18 +7,16 @@ import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
 function Application (props) {
   const [authNickname, setAuthNickname] = useState(null)
   const [authToken, setAuthToken] = useState(null)
-  return  <div>
-            <BrowserRouter>
-              <>
-                <NavBar authNickname={authNickname} setAuthNickname={setAuthNickname} setAuthToken={setAuthToken} />
-                <Switch>
-                  <Route exact path="/play/lobby"><LobbyClient authToken={authToken}/></Route>
-                  <Route path="/play/game/:gameid" render = {({ match }) => <GameClient gameid={match.params.gameid} authToken={authToken} />} />
-                  <Route><Redirect to="/404" /></Route>
-                </Switch>
-              </>
-            </BrowserRouter>
-          </div>
+  return  <BrowserRouter>
+            <>
+              <NavBar authNickname={authNickname} setAuthNickname={setAuthNickname} setAuthToken={setAuthToken} />
+              <Switch>
+                <Route exact path="/play/lobby"><LobbyClient authToken={authToken}/></Route>
+                <Route path="/play/game/:gameid" render = {({ match }) => <GameClient gameid={match.params.gameid} authToken={authToken} />} />
+                <Route><Redirect to="/404" /></Route>
+              </Switch>
+            </>
+          </BrowserRouter>
 };
 
 export default Application;

@@ -2,6 +2,7 @@ import './vendor/json_delta'
 import React, { useEffect, useState } from 'react'
 import CardGameRenderer from './CardGameRenderer'
 import DefaultRenderer from './DefaultRenderer'
+import GameLog from './GameLog';
 import io from 'socket.io-client'
 
 function nonDestructivePatch(oldStruc, patch) {
@@ -71,13 +72,17 @@ function GameClient(props) {
   if (!isLoaded) {
     return <div>Loading game ...</div>
   }
+  let renderer;
   switch(game.game_type) {
     case 'example_card':
-      return <CardGameRenderer game={game} history={history} dispatchAction={dispatchAction} />
+      renderer = <CardGameRenderer game={game} dispatchAction={dispatchAction} />
     default:
-      return <DefaultRenderer game={game} history={history} dispatchAction={dispatchAction} />
+      renderer = <DefaultRenderer game={game} dispatchAction={dispatchAction} />
   }
-
+  return (<>
+            {renderer}
+            <GameLog history={history} />
+          </>)
 }
 
 export default GameClient;

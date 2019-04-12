@@ -18,6 +18,7 @@ function GameClient(props) {
   const [socket, setSocket] = useState(null)
   const [game, setGame] = useState({})
   const [history, setHistory] = useState([])
+  const [prompts, setPrompts] = useState([])
 
   function dispatchAction(action_data) {
     socket.emit('game_action', {action: action_data, gameid: props.gameid})
@@ -33,20 +34,21 @@ function GameClient(props) {
       sock.emit('open_game', {gameid: props.gameid})
     })
     sock.on('update_full', (data) => {
-      let gameid, newHistory
-      ({ gameid, history: newHistory } = data)
+      let gameid, newHistory, newPrompts
+      ({ gameid, history: newHistory, prompts: newPrompts } = data)
       if (gameid == props.gameid) {
         setHistory(newHistory)
         let computedState = {}
         newHistory.map((obj) => {computedState = nonDestructivePatch(computedState, obj.delta)})
         setGame(computedState)
+        setPrompts(newPrompts)
         setLoaded(true)
       }
     })
     sock.on('update_step', (data) => {
       console.log(JSON.stringify(data))
-      let gameid, index, step, currentHistory, currentGame
-      ({ gameid, index, step } = data)
+      let gameid, index, step, newPrompts, currentHistory, currentGame
+      ({ gameid, index, step, prompts: newPrompts } = data)
       // get the current value at the time the handler is called
       setHistory((h) => {currentHistory = h; return h})
       setGame((g) => {currentGame = g; return g})
@@ -54,6 +56,7 @@ function GameClient(props) {
         setHistory(currentHistory.concat([step]))
         setGame(nonDestructivePatch(currentGame, step.delta))
       }
+      setPrompts(newPrompts)
     })
     sock.on('client_error', (msg) => {
       console.log('Received client error: ' + msg)
@@ -75,9 +78,10 @@ function GameClient(props) {
   let renderer;
   switch(game.game_type) {
     case 'example_card':
-      renderer = <CardGameRenderer game={game} dispatchAction={dispatchAction} />
+      renderer = <CardGameRenderer game={game} prompts={prompts} dispatchAction={dispatchAction} />
+      break;
     default:
-      renderer = <DefaultRenderer game={game} dispatchAction={dispatchAction} />
+      renderer = <DefaultRenderer game={game} prompts={prompts} dispatchAction={dispatchAction} />
   }
   return (<>
             {renderer}

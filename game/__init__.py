@@ -24,6 +24,8 @@ class BaseGame:
     max_players = 2
     model_class = BaseModel
     type_string = None
+    def __init_subclass__(cls):
+        GameConfig.properties()['game_type'].choice_keys.append(cls.type_string)
     def __init__(self, gameid):
         self.temp_config = GameConfig(gameid=gameid, game_type=self.type_string)
         self.model = None
@@ -82,15 +84,26 @@ class BaseGame:
         yield self.get_observer_channel()
     def get_full_update(self, uid):
         if uid not in self.config.players:
-            return {'gameid': self.config.gameid, 'history': [{'text': h.log_message, 'delta': h.public_view_delta} for h in self.history]}
-        return {'gameid': self.config.gameid, 'history': [{'text': h.log_message, 'delta': h.player_view_deltas[uid]} for h in self.history]}
+            return {'gameid': self.config.gameid,
+                    'history': [{'text': h.log_message, 'delta': h.public_view_delta} for h in self.history],
+                    'prompts': {}}
+        return {'gameid': self.config.gameid,
+                'history': [{'text': h.log_message, 'delta': h.player_view_deltas[uid]} for h in self.history],
+                'prompts': self.get_current_prompts(uid)}
     def get_step_update(self, uid):
         if uid not in self.config.players:
             delta = self.history[-1].public_view_delta
+            prompts = {}
         else:
             delta = self.history[-1].player_view_deltas[uid]
+            prompts = self.get_current_prompts(uid)
         idx = len(self.history) - 1
-        return {'gameid': self.config.gameid, 'index': idx, 'step': {'text': self.history[-1].log_message, 'delta': delta}}
+        return {'gameid': self.config.gameid,
+                'index': idx,
+                'step': {'text': self.history[-1].log_message, 'delta': delta},
+                'prompts': prompts}
+    def get_current_prompts(self, userid):
+        return {'buttons': list(self.model.get_actions(userid))}
     def handle_action(self, userid, action):
         if not self.model.is_legal_action(userid, action):
             raise IllegalAction()

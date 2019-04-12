@@ -4,8 +4,9 @@ import CardGameTextBox from './CardGameTextBox';
 
 function CardGameRenderer(props) {
   let buttonRow = null;
-  if (props.game.my_moves) {
-    buttonRow = <ButtonRow moves={props.game.my_moves} dispatchAction={props.dispatchAction} gameid={props.game.gameid} />
+  console.log(props)
+  if (props.prompts.buttons) {
+    buttonRow = <ButtonRow moves={props.prompts.buttons} dispatchAction={props.dispatchAction} />
   }
   return (<>
             <CardGameTextBox game={props.game} />

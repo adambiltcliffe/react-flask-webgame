@@ -77,7 +77,6 @@ class TurnBasedModel(BaseModel):
     def get_player_view(self, userid):
         result = self.get_public_view()
         result['my_player_index'] = self.turn_order.index(userid)
-        result['my_moves'] = list(self.get_actions(userid)) # should be handled elsewhere eventually
         return result
 
 class SquareSubtractionModel(TurnBasedModel):

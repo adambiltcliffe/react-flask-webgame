@@ -1,8 +1,8 @@
 import React from 'react';
 
 function MoveButton(props) {
-  return (<button key={props.moveName} onClick={() => props.dispatchAction(props.moveName)}>
-            {props.moveName}
+  return (<button onClick={() => props.dispatchAction(props.action)}>
+            {props.text}
           </button>)
 };
 

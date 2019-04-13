@@ -103,7 +103,7 @@ class BaseGame:
                 'step': {'text': self.history[-1].log_message, 'delta': delta},
                 'prompts': prompts}
     def get_current_prompts(self, userid):
-        return {'buttons': list(self.model.get_actions(userid))}
+        return {'buttons': [[act, act] for act in self.model.get_actions(userid)]}
     def handle_action(self, userid, action):
         if not self.model.is_legal_action(userid, action):
             raise IllegalAction()
@@ -124,3 +124,15 @@ class ExampleCardGame(BaseGame):
     max_players = 2
     type_string = 'example_card'
     model_class = ExampleCardGameModel
+    @staticmethod
+    def get_text_for_action(action):
+        if action[0] == 'play':
+            return f'Play a {action[1]}'
+        elif action[0] == 'discard_double':
+            return f'Discard a pair of {action[1]}s'
+        elif action[0] == 'pick':
+            return f'Take a {action[1]}'
+        else:
+            return '???'
+    def get_current_prompts(self, userid):
+        return {'buttons': [[self.get_text_for_action(act), act] for act in self.model.get_actions(userid)]}

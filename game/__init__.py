@@ -135,4 +135,9 @@ class ExampleCardGame(BaseGame):
         else:
             return '???'
     def get_current_prompts(self, userid):
-        return {'buttons': [[self.get_text_for_action(act), act] for act in self.model.get_actions(userid)]}
+        buttons_prompts = [[self.get_text_for_action(act), act] for act in self.model.get_actions(userid)]
+        hand_card_prompts = {card: [] for card in self.model.hands[userid]}
+        for act in self.model.get_actions(userid):
+            if act[0] == 'play' or act[0] == 'discard_double':
+                hand_card_prompts[act[1]].append([self.get_text_for_action(act), act])
+        return {'buttons': buttons_prompts, 'hand_card': hand_card_prompts}

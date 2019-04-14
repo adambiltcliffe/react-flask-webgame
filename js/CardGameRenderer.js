@@ -9,7 +9,7 @@ function CardGameRenderer(props) {
     buttonRow = <ButtonRow moves={props.prompts.buttons} dispatchAction={props.dispatchAction} />
   }
   return (<>
-            <CardGameTextBox game={props.game} />
+            <CardGameTextBox game={props.game} prompts={props.prompts} dispatchAction={props.dispatchAction} />
             {buttonRow}
           </>)
 }

@@ -23,7 +23,7 @@ function CardGameTextBox(props) {
   let myHand = null;
   if (props.game.my_hand) {
     myHand = <div className="para">You: {props.game.my_hand.map((n, idx) => {
-      return <Card key={idx} value={n} />
+      return <Card key={idx} value={n} prompt={props.prompts.hand_card && props.prompts.hand_card[n]} dispatchAction={props.dispatchAction} />
     })}</div>
   }
   let winnerInfo = null;

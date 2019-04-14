@@ -15,6 +15,10 @@ html * {max-height:1000000px;}
     margin-bottom: 1em;
 }
 
+.clickable {
+    cursor: pointer;
+}
+
 .boxed {
     border: 1px solid black;
     padding-left: 10px;

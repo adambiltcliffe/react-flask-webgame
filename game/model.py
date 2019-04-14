@@ -37,6 +37,7 @@ class TurnBasedModel(BaseModel):
     def setup(self):
         random.shuffle(self.turn_order)
         self.active_player_index = 0
+        self.update_legal_actions()
     def get_start_message(self):
         return f'Game started. {self.active_usernick} plays first.'
     @property
@@ -45,12 +46,14 @@ class TurnBasedModel(BaseModel):
     @property
     def active_usernick(self):
         return self.config.playernicks[self.active_userid]
-    def get_actions(self, userid):
+    def update_legal_actions(self):
         if self.result is not None:
-            yield ['restart']
+            self._cached_actions = {uid: [['restart']] for uid in self.config.players}
         else:
-            if userid == self.active_userid:
-                yield from self.get_actions_for_active_player()
+            self._cached_actions = {uid: [] for uid in self.config.players}
+            self._cached_actions[self.active_userid] = list(self.get_actions_for_active_player())
+    def get_actions(self, userid):
+        return self._cached_actions[userid]
     def get_actions_for_active_player(self):
         raise NotImplementedError()
     def is_legal_action(self, userid, action):
@@ -64,7 +67,7 @@ class TurnBasedModel(BaseModel):
             log_callback(f'New game starting. {self.active_usernick} plays first.')
         else:
             self.apply_action_for_active_player(action, log_callback)
-        # self.update_legal_actions()
+        self.update_legal_actions()
     def apply_action_for_active_player(self, action, log_callback):
         raise NotImplementedError()
     def advance_turn(self):
@@ -123,6 +126,7 @@ class ExampleCardGameModel(TurnBasedModel):
         self.viewing = None
         super(ExampleCardGameModel, self).setup()
     def get_actions_for_active_player(self):
+        print("calling get_actions_for_active_player()")
         if self.viewing:
             yield from [['pick', n] for n in sorted(set(self.viewing))]
         else:

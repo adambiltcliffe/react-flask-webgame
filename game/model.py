@@ -47,7 +47,7 @@ class TurnBasedModel(BaseModel):
         return self.config.playernicks[self.active_userid]
     def get_actions(self, userid):
         if self.result is not None:
-            yield 'restart'
+            yield ['restart']
         else:
             if userid == self.active_userid:
                 yield from self.get_actions_for_active_player()
@@ -58,7 +58,7 @@ class TurnBasedModel(BaseModel):
     def apply_action(self, userid, action, log_callback):
         if not self.is_legal_action(userid, action):
             return False
-        if action == 'restart':
+        if action == ['restart']:
             self.result = None
             self.setup()
             log_callback(f'New game starting. {self.active_usernick} plays first.')

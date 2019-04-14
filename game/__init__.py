@@ -132,6 +132,8 @@ class ExampleCardGame(BaseGame):
             return f'Discard a pair of {action[1]}s'
         elif action[0] == 'pick':
             return f'Take a {action[1]}'
+        elif action[0] == 'restart':
+            return 'Restart the game'
         else:
             return '???'
     def get_current_prompts(self, userid):

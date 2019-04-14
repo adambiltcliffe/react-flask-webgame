@@ -1,8 +1,6 @@
 TO-DO LIST
 ==========
 
-Extend prompts system
-
 Move CardGameTextBox back into CardGameRenderer (and decompose?)
 
 Cache legal actions to avoid recomputing for validation

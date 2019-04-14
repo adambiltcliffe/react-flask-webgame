@@ -16,7 +16,7 @@ app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
 socketio = SocketIO(app)
 jwt = JWTManager(app)
 
-users = {'test-albus': 'Albus', 'test-bungo': 'BUNGO', 'test-conan': 'Conan the Destroyer'}
+users = {'test-albus': 'Albus Dumbledore', 'test-bungo': 'Mr Bungo', 'test-conan': 'Conan the Barbarian'}
 next_game_id = [1]
 games = {}
 def make_game(c, id1, id2):

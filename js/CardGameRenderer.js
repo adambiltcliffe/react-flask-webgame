@@ -6,7 +6,7 @@ function CardGameRenderer(props) {
   let buttonRow = null;
   console.log(props)
   if (props.prompts.buttons) {
-    buttonRow = <ButtonRow moves={props.prompts.buttons} dispatchAction={props.dispatchAction} />
+    buttonRow = <div className="para"><ButtonRow moves={props.prompts.buttons} dispatchAction={props.dispatchAction} /></div>
   }
   return (<>
             <CardGameTextBox game={props.game} prompts={props.prompts} dispatchAction={props.dispatchAction} />

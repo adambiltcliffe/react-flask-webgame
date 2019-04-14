@@ -26,6 +26,12 @@ function CardGameTextBox(props) {
       return <Card key={idx} value={n} prompt={props.prompts.hand_card && props.prompts.hand_card[n]} dispatchAction={props.dispatchAction} />
     })}</div>
   }
+  let viewedCards = null;
+  if (props.game.viewing) {
+    viewedCards = <div className="para">Top cards of deck: {props.game.viewing.map((n, idx) => {
+      return <Card key={idx} value={n} prompt={props.prompts.viewed_card && props.prompts.viewed_card[n]} dispatchAction={props.dispatchAction} />
+    })}</div>
+  }
   let winnerInfo = null;
   if (props.game.winner) {
     winnerInfo = <p className="winner-info">{props.game.winner} is the winner!</p>
@@ -39,6 +45,7 @@ function CardGameTextBox(props) {
               <p>Cards in hand</p>
               {otherHands}
               {myHand}
+              {viewedCards}
             </div>
             {winnerInfo}
           </>);

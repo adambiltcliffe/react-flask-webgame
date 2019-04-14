@@ -126,7 +126,6 @@ class ExampleCardGameModel(TurnBasedModel):
         self.viewing = None
         super(ExampleCardGameModel, self).setup()
     def get_actions_for_active_player(self):
-        print("calling get_actions_for_active_player()")
         if self.viewing:
             yield from [['pick', n] for n in sorted(set(self.viewing))]
         else:
@@ -175,4 +174,6 @@ class ExampleCardGameModel(TurnBasedModel):
     def get_player_view(self, userid):
         result = super(ExampleCardGameModel, self).get_player_view(userid)
         result['my_hand'] = self.hands[userid].copy()
+        if self.viewing and userid == self.active_userid:
+            result['viewing'] = self.viewing.copy()
         return result

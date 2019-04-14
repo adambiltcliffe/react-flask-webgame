@@ -3,8 +3,6 @@ TO-DO LIST
 
 Move CardGameTextBox back into CardGameRenderer (and decompose?)
 
-Cache legal actions to avoid recomputing for validation
-
 Remove the ability to restart games once no longer needed for testing
 
 Set up replayable game actions on client

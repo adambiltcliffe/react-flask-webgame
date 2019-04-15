@@ -1,9 +1,8 @@
 TO-DO LIST
 ==========
 
-Move CardGameTextBox back into CardGameRenderer (and decompose?)
-
-Remove the ability to restart games once no longer needed for testing
+Added functionality
+-------------------
 
 Set up replayable game actions on client
 
@@ -16,6 +15,14 @@ Make it possible to login with Google or Discord or whatever
 Add functionality to create games in the lobby
 
 Make the lobby visually less horrendous
+
+
+Refactoring, bugfixing etc.
+----------------
+
+Move CardGameTextBox back into CardGameRenderer (and decompose?)
+
+Remove the ability to restart games once no longer needed for testing
 
 Set up EditorConfig
 

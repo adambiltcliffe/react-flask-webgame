@@ -16,7 +16,8 @@ function GameClient(props) {
   const [isLoaded, setLoaded] = useState(false)
   const [error, setError] = useState(null)
   const [socket, setSocket] = useState(null)
-  const [game, setGame] = useState({})
+  const [gameStates, setGameStates] = useState({})
+  const [shownStep, setShownStep] = useState(0)
   const [history, setHistory] = useState([])
   const [prompts, setPrompts] = useState([])
 
@@ -39,9 +40,14 @@ function GameClient(props) {
       if (gameid == props.gameid) {
         setHistory(newHistory)
         let computedState = {}
-        newHistory.map((obj) => {computedState = nonDestructivePatch(computedState, obj.delta)})
-        setGame(computedState)
+        let computedStateArray = []
+        newHistory.map((obj) => {
+          computedState = nonDestructivePatch(computedState, obj.delta)
+          computedStateArray.push(computedState)
+        })
+        setGameStates(computedStateArray)
         setPrompts(newPrompts)
+        setShownStep(computedStateArray.length - 1)
         setLoaded(true)
       }
     })
@@ -51,11 +57,13 @@ function GameClient(props) {
       ({ gameid, index, step, prompts: newPrompts } = data)
       // get the current value at the time the handler is called
       setHistory((h) => {currentHistory = h; return h})
-      setGame((g) => {currentGame = g; return g})
       if (gameid == props.gameid && index == currentHistory.length) {
         setHistory(currentHistory.concat([step]))
-        setGame(nonDestructivePatch(currentGame, step.delta))
+        setGameStates((g) => {
+          return g.concat(nonDestructivePatch(g[g.length-1], step.delta))
+        })
       }
+      setShownStep((step) => (step == currentHistory.length - 1) ? step + 1 : step)
       setPrompts(newPrompts)
     })
     sock.on('client_error', (msg) => {
@@ -68,6 +76,8 @@ function GameClient(props) {
     }
   }, [props.gameid, props.authToken])
 
+  const resetShownStep = useCallback(() => { setShownStep(history.length - 1) }, [history])
+
   // Now render
   if (error) {
     return <div>Client error: {error}</div>
@@ -75,17 +85,20 @@ function GameClient(props) {
   if (!isLoaded) {
     return <div>Loading game ...</div>
   }
+
   let renderer;
-  switch(game.game_type) {
+  const currentGame = gameStates[shownStep]
+  const passedPrompts = (shownStep == gameStates.length - 1) ? prompts : {history: resetShownStep}
+  switch(currentGame.game_type) {
     case 'example_card':
-      renderer = <CardGameRenderer game={game} prompts={prompts} dispatchAction={dispatchAction} />
+      renderer = <CardGameRenderer game={currentGame} prompts={passedPrompts} dispatchAction={dispatchAction} />
       break;
     default:
-      renderer = <DefaultRenderer game={game} prompts={prompts} dispatchAction={dispatchAction} />
+      renderer = <DefaultRenderer game={currentGame} prompts={passedPrompts} dispatchAction={dispatchAction} />
   }
   return (<>
             {renderer}
-            <GameLog history={history} />
+            <GameLog history={history} setShownStep={setShownStep}/>
           </>)
 }
 

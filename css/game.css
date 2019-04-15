@@ -5,6 +5,30 @@ html * {max-height:1000000px;}
     background-color:#bbbbbb;
 }
 
+.game-history {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    background-color: #bbbbbb;
+    padding: 10px;
+}
+
+.game-history-entry {
+    border: 1px solid black;
+    background-color: white;
+    padding: 5px;
+}
+
+.game-history-entry-shown {
+    border: 1px solid black;
+    background-color: #bbffbb;
+    padding: 5px;
+}
+
 .winner-info {
     font-weight: bold;
 }

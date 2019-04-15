@@ -4,10 +4,6 @@ TO-DO LIST
 Added functionality
 -------------------
 
-Set up replayable game actions on client
-
-Make a RendererSelector component with lazy loading
-
 Persist user and game information to a database
 
 Make it possible to login with Google or Discord or whatever
@@ -19,6 +15,10 @@ Make the lobby visually less horrendous
 
 Refactoring, bugfixing etc.
 ----------------
+
+Make the history autoscroll down intelligently
+
+Make a RendererSelector component with lazy loading
 
 Move CardGameTextBox back into CardGameRenderer (and decompose?)
 

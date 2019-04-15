@@ -98,7 +98,7 @@ function GameClient(props) {
   }
   return (<>
             {renderer}
-            <GameLog history={history} setShownStep={setShownStep}/>
+            <GameLog history={history} shownStep={shownStep} setShownStep={setShownStep}/>
           </>)
 }
 

@@ -1,5 +1,5 @@
 import './vendor/json_delta'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import CardGameRenderer from './CardGameRenderer'
 import DefaultRenderer from './DefaultRenderer'
 import GameLog from './GameLog';
@@ -20,9 +20,9 @@ function GameClient(props) {
   const [history, setHistory] = useState([])
   const [prompts, setPrompts] = useState([])
 
-  function dispatchAction(action_data) {
+  const dispatchAction = useCallback((action_data) => {
     socket.emit('game_action', {action: action_data, gameid: props.gameid})
-  }
+  })
 
   // Side effects
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import MoveButton from './MoveButton'
 import PopupMenu from './PopupMenu'
 
@@ -8,12 +8,12 @@ function Card(props) {
   let hasChild = props.prompt && props.prompt.length > 0
   let n = props.value
   let cssClass = (n == "?" ? "card-unknown" : "card-" + n) + (hasChild ? " clickable" : "")
-  function toggleChild() {
+  const toggleChild = useCallback(() => {
     setShowChild((x) => !x)
-  }
-  function hideChild() {
+  })
+  const hideChild = useCallback(() => {
     setShowChild(false)
-  }
+  })
   if (hasChild && showChild) {
     popupMenuContent = props.prompt.map((item) => {
       const [text, action] = item;

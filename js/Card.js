@@ -10,10 +10,10 @@ function Card(props) {
   let cssClass = (n == "?" ? "card-unknown" : "card-" + n) + (hasChild ? " clickable" : "")
   const toggleChild = useCallback(() => {
     setShowChild((x) => !x)
-  })
+  }, [])
   const hideChild = useCallback(() => {
     setShowChild(false)
-  })
+  } , [])
   if (hasChild && showChild) {
     popupMenuContent = props.prompt.map((item) => {
       const [text, action] = item;

@@ -22,7 +22,7 @@ function GameClient(props) {
 
   const dispatchAction = useCallback((action_data) => {
     socket.emit('game_action', {action: action_data, gameid: props.gameid})
-  })
+  }, [socket, props.gameid])
 
   // Side effects
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import MoveButton from './MoveButton'
+import MoveButton from '../MoveButton'
 import PopupMenu from './PopupMenu'
 
 function Card(props) {

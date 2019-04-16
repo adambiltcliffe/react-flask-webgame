@@ -1,6 +1,6 @@
 import './vendor/json_delta'
 import React, { useCallback, useEffect, useState } from 'react'
-import CardGameRenderer from './CardGameRenderer'
+import CardGameRenderer from './examplecardgame/CardGameRenderer'
 import DefaultRenderer from './DefaultRenderer'
 import GameLog from './GameLog';
 import io from 'socket.io-client'

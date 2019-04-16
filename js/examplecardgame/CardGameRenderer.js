@@ -1,5 +1,5 @@
 import React from 'react';
-import PromptBox from './PromptBox';
+import PromptBox from '../PromptBox';
 import CardGameTextBox from './CardGameTextBox';
 
 function CardGameRenderer(props) {

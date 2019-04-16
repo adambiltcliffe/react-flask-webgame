@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import io from 'socket.io-client';
+import GameLobbyEntry from './GameLobbyEntry'
 
 function LobbyClient(props) {
   const [isConnected, setConnected] = useState(false)
@@ -11,7 +11,7 @@ function LobbyClient(props) {
   // Side effects
   useEffect(() => {
     console.log(props)
-    const sock = io('/lobby', {transports: ["websocket"], query: {token: props.authToken}})
+    const sock = io('/lobby', {transports: ["websocket"], query: {token: props.auth.token}})
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)
@@ -41,13 +41,7 @@ function LobbyClient(props) {
   if (!isLoaded) {
     return <div>Loading lobby ...</div>
   }
-  const gamelist = Object.entries(games).map(([id, status]) => <li key={id}>{JSON.stringify(status)}<Link to={`/play/game/${id}`}>Play!</Link></li>)
-  return (<div>
-    <p>Current game list: {JSON.stringify(games)}.</p>
-    <ul>
-        {gamelist}
-    </ul>
-  </div>);
+  return (<ul>{Object.entries(games).map(([id, status]) => <GameLobbyEntry key={id} userid={props.auth.userid} gameid={id} status={status} />)}</ul>)
 }
 
 export default LobbyClient;

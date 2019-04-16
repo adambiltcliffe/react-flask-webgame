@@ -21,8 +21,9 @@ function NavBar(props) {
         if (JWT.validate(jwtValue))
         {
           JWT.keep(jwtValue)
-          props.setAuthToken(JWT.write(jwtValue))
-          props.setAuthNickname(jwtValue.claim.user_claims.nickname)
+          props.setAuth({token: JWT.write(jwtValue),
+            userid: jwtValue.claim.identity,
+            nickname: jwtValue.claim.user_claims.nickname})
         }
         else {
           JWT.forget()
@@ -33,31 +34,31 @@ function NavBar(props) {
   function handleLogout(event) {
     event.preventDefault()
     JWT.forget()
-    props.setAuthToken(null)
-    props.setAuthNickname(null)
+    props.setAuth({token: null})
   }
 
   useEffect(() => {
     const jwtValue = JWT.remember()
     if (JWT.validate(jwtValue))
     {
-      props.setAuthToken(JWT.write(jwtValue))
-      props.setAuthNickname(jwtValue.claim.user_claims.nickname)
+      props.setAuth({token: JWT.write(jwtValue),
+        userid: jwtValue.claim.identity,
+        nickname: jwtValue.claim.user_claims.nickname})
     }
     else {
       JWT.forget()
     }
-  }, [props.authNickname])
+  }, [props.auth])
 
   const lobbyLink = (<Switch>
                         <Route exact path="/play/lobby" />
                         <Route><Link to="/play/lobby">Back to lobby</Link></Route>
                       </Switch>)
 
-  if (props.authNickname) {
+  if (props.auth.token) {
     return (<div className="navbar">
       This is the nav bar!
-      Logged in as {props.authNickname}.
+      Logged in as {props.auth.nickname}.
       <form onSubmit={handleLogout}>
         <button type="submit">Log out</button>
       </form>

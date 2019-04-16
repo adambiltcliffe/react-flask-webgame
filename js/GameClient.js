@@ -27,7 +27,7 @@ function GameClient(props) {
 
   // Side effects
   useEffect(() => {
-    const sock = io('/game', {transports: ["websocket"], query: {token: props.authToken}})
+    const sock = io('/game', {transports: ["websocket"], query: {token: props.auth.token}})
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)

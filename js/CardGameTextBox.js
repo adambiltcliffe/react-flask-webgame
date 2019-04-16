@@ -11,8 +11,7 @@ function CardGameTextBox(props) {
     playerList = props.game.playernicks[props.game.players[0]] + ' vs. ' + props.game.playernicks[props.game.players[1]]
   }
   let stack = props.game.stack.map((n, idx) => { return <Card key={idx} value={n} /> })
-  let otherHands = Object.entries(props.game.hand_counts).map((kv) => {
-    const [k, v] = kv
+  let otherHands = Object.entries(props.game.hand_counts).map(([k, v]) => {
     if (props.game.players[props.game.my_player_index] == k) { return null }
     let hiddenCards = [];
     for (let i=0; i<v; i++) {

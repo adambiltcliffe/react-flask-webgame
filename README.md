@@ -12,11 +12,7 @@ Make the lobby visually less horrendous
 Refactoring, bugfixing etc.
 ---------------------------
 
-Make the history autoscroll down intelligently
-
 Make a RendererSelector component with lazy loading
-
-Move CardGameTextBox back into CardGameRenderer (and decompose?)
 
 Remove the ability to restart games once no longer needed for testing
 

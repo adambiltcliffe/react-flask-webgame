@@ -14,8 +14,6 @@ Refactoring, bugfixing etc.
 
 Make a RendererSelector component with lazy loading
 
-Remove the ability to restart games once no longer needed for testing
-
 Move all the socket stuff into one place rather than duplicated in LobbyClient/GameClient
 Show connection status
 Handle the brief opening and closing of anonymous sockets while loading?

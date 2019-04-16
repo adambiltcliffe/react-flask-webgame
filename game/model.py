@@ -47,11 +47,8 @@ class TurnBasedModel(BaseModel):
     def active_usernick(self):
         return self.config.playernicks[self.active_userid]
     def update_legal_actions(self):
-        if self.result is not None:
-            self._cached_actions = {uid: [['restart']] for uid in self.config.players}
-        else:
-            self._cached_actions = {uid: [] for uid in self.config.players}
-            self._cached_actions[self.active_userid] = list(self.get_actions_for_active_player())
+        self._cached_actions = {uid: [] for uid in self.config.players}
+        self._cached_actions[self.active_userid] = list(self.get_actions_for_active_player())
     def get_actions(self, userid):
         return self._cached_actions[userid]
     def get_actions_for_active_player(self):
@@ -61,10 +58,6 @@ class TurnBasedModel(BaseModel):
     def apply_action(self, userid, action, log_callback):
         if not self.is_legal_action(userid, action):
             return False
-        if action == ['restart']:
-            self.result = None
-            self.setup()
-            log_callback(f'New game starting. {self.active_usernick} plays first.')
         else:
             self.apply_action_for_active_player(action, log_callback)
         self.update_legal_actions()
@@ -125,6 +118,11 @@ class ExampleCardGameModel(TurnBasedModel):
         self.stack = []
         self.viewing = None
         super(ExampleCardGameModel, self).setup()
+    def update_legal_actions(self):
+        if self.result is not None:
+            self._cached_actions = {uid: [['restart']] for uid in self.config.players}
+        else:
+            super(ExampleCardGameModel, self).update_legal_actions()
     def get_actions_for_active_player(self):
         if self.viewing:
             yield from [['pick', n] for n in sorted(set(self.viewing))]
@@ -134,6 +132,16 @@ class ExampleCardGameModel(TurnBasedModel):
             for v in c:
                 if c[v] > 1:
                     yield ['discard_double', v]
+    def apply_action(self, userid, action, log_callback):
+        if not self.is_legal_action(userid, action):
+            return False
+        if action == ['restart']:
+            self.result = None
+            self.setup()
+            log_callback(f'New game starting. {self.active_usernick} plays first.')
+        else:
+            self.apply_action_for_active_player(action, log_callback)
+        self.update_legal_actions()
     def apply_action_for_active_player(self, action, log_callback):
         move_type = action[0]
         if move_type == 'play':

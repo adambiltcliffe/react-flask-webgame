@@ -11,8 +11,7 @@ Refactoring, bugfixing etc.
 
 Make a RendererSelector component with lazy loading
 
-Move all the socket stuff into one place rather than duplicated in LobbyClient/GameClient
-Show connection status
+Finish moving all the socket stuff into one place rather than duplicated in LobbyClient/GameClient
 Handle the brief opening and closing of anonymous sockets while loading?
 Handle token expirations in some sensible way?
 

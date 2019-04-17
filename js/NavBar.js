@@ -54,6 +54,7 @@ function NavBar(props) {
                         <Route exact path="/play/lobby" />
                         <Route><Link to="/play/lobby">Back to lobby</Link></Route>
                       </Switch>)
+  const connStr = 'Connected to server: ' + (props.isConnected ? 'Yes': 'No')
 
   if (props.auth.token) {
     return (<div className="navbar">
@@ -62,7 +63,7 @@ function NavBar(props) {
       <form onSubmit={handleLogout}>
         <button type="submit">Log out</button>
       </form>
-      {lobbyLink}
+      {connStr} {lobbyLink}
     </div>)
 
   }
@@ -74,7 +75,7 @@ function NavBar(props) {
         <input type="text" name="name" ref={nameElRef} />
         <button type="submit">Log in</button>
       </form>
-      {lobbyLink}
+      {connStr} {lobbyLink}
     </div>)
   }
 };

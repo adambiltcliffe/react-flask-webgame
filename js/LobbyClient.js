@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
-import GameLobbyEntry from './GameLobbyEntry'
+import GameLobbyTableRow from './GameLobbyTableRow'
 
 function LobbyClient(props) {
   const [isConnected, setConnected] = useState(false)
@@ -16,8 +16,6 @@ function LobbyClient(props) {
       setConnected(true)
     })
     sock.on('games_list', (data) => {
-      console.log('Received games list')
-      console.log(JSON.stringify(data))
       let gamelist
       ({ gamelist } = data)
       setGames(gamelist)
@@ -40,7 +38,19 @@ function LobbyClient(props) {
   if (!isLoaded) {
     return <div>Loading lobby ...</div>
   }
-  return (<ul>{Object.entries(games).map(([id, state]) => <GameLobbyEntry key={id} userid={props.auth.userid} gameid={id} state={state} />)}</ul>)
+  return (<table>
+            <thead><tr>
+              <th>ID</th>
+              <th>Game</th>
+              <th>Players</th>
+              <th>Status</th>
+              <th>Active player</th>
+              <th />
+            </tr></thead>
+            <tbody>
+              {Object.entries(games).map(([id, state]) => <GameLobbyTableRow key={id} userid={props.auth.userid} gameid={id} state={state} />)}
+            </tbody>
+          </table>)
 }
 
 export default LobbyClient;

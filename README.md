@@ -6,9 +6,6 @@ Added functionality
 
 Add functionality to create games in the lobby
 
-Make the lobby visually less horrendous
-
-
 Refactoring, bugfixing etc.
 ---------------------------
 

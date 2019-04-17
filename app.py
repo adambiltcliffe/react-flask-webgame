@@ -69,34 +69,25 @@ def bundled_assets(filename):
   return send_from_directory('dist', filename)
 
 # /lobby namespace
-@socketio.on('connect', namespace='/lobby')
+@socketio.on('connect')
 def connect_new_lobby_user():
   conns[request.sid] = Conn(request.args.get("token"))
   identity = conns[request.sid].identity
-  print(f"{identity} connected to lobby namespace")
-  gamelist = {gameid: games[gameid].get_lobby_info() for gameid in games}
-  emit('games_list', {'gamelist': gamelist})
+  print(f"{identity} connected")
 
-@socketio.on('disconnect', namespace='/lobby')
-def disconnect_lobby_user():
-  identity = conns[request.sid].identity
-  del conns[request.sid]
-  print(f"{identity} disconnected from lobby namespace")
-
-# /game namespace
-@socketio.on('connect', namespace='/game')
-def connect_new_user():
-  conns[request.sid] = Conn(request.args.get("token"))
-  identity = conns[request.sid].identity
-  print(f"{identity} connected to game namespace")
-
-@socketio.on('disconnect', namespace='/game')
+@socketio.on('disconnect')
 def disconnect_user():
   identity = conns[request.sid].identity
   del conns[request.sid]
-  print(f"{identity} disconnected from game namespace")
+  print(f"{identity} disconnected")
 
-@socketio.on('open_game', namespace='/game')
+@socketio.on('open_lobby')
+def send_lobby_state_add_to_room():
+  gamelist = {gameid: games[gameid].get_lobby_info() for gameid in games}
+  emit('games_list', {'gamelist': gamelist})
+  join_room('lobby')
+
+@socketio.on('open_game')
 def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
@@ -112,10 +103,10 @@ def send_game_state_add_to_room(data):
   else:
     emit('client_error', 'Bad game ID.')
 
-@socketio.on('game_action', namespace='/game')
+@socketio.on('game_action')
 def game_action(data):
   identity = conns[request.sid].identity
-  print(f"{identity} sent move data: {data}")
+  print(f"{identity} sent action data: {data}")
   gameid = data.get('gameid', None)
   if gameid is None or gameid not in games:
     emit('client_error', 'Bad game ID.')
@@ -124,8 +115,9 @@ def game_action(data):
   else:
     try:
       for channel, message_type, data in games[gameid].handle_action(conns[request.sid].identity, data['action']):
-        socketio.emit(message_type, data, room=channel, namespace='/game')
-      socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].model.get_lobby_view()}, broadcast=True, namespace='/lobby')
+        socketio.emit(message_type, data, room=channel)
+      # TODO next line should go to a lobby channel!!!
+      socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
     except IllegalAction:
       emit('client_error', f'Illegal action data: {data}')
 

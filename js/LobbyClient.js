@@ -10,21 +10,17 @@ function LobbyClient(props) {
 
   // Side effects
   useEffect(() => {
-    const sock = io('/lobby', {transports: ["websocket"], query: {token: props.auth.token}})
+    const sock = io({transports: ["websocket"], query: {token: props.auth.token}})
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)
+      sock.emit('open_lobby')
     })
-    sock.on('games_list', (data) => {
-      let gamelist
-      ({ gamelist } = data)
+    sock.on('games_list', ({ gamelist }) => {
       setGames(gamelist)
       setLoaded(true)
     })
-    sock.on('game_status', (data) => {
-      console.log('Received game status update: ' + JSON.stringify(data))
-      let gameid, status
-      ({gameid, status} = data)
+    sock.on('game_status', ({ gameid, status }) => {
       setGames((games) => {return {...games, [gameid]: status}})
     })
     setSocket(sock)

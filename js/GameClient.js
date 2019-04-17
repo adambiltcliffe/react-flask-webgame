@@ -27,12 +27,15 @@ function GameClient(props) {
 
   // Side effects
   useEffect(() => {
-    const sock = io('/game', {transports: ["websocket"], query: {token: props.auth.token}})
+    const sock = io({transports: ["websocket"], query: {token: props.auth.token}})
     sock.on('connect', () => {
       console.log('connected!!')
       setConnected(true)
       console.log('requesting load')
       sock.emit('open_game', {gameid: props.gameid})
+    })
+    sock.on('reconnect', () => {
+      console.log("reconnected?")
     })
     sock.on('update_full', (data) => {
       let gameid, newHistory, newPrompts

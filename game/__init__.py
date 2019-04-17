@@ -40,6 +40,12 @@ class BaseGame:
         if self.model is None:
             return 'WAIT' if len(self.config.players) < self.min_players else 'READY'
         return self.model.status
+    def get_lobby_info(self):
+        return {'gameid': self.config.gameid,
+                'game_type': self.config.game_type,
+                'players': self.config.players.copy(),
+                'playernicks': self.config.playernicks.copy(),
+                'status': self.status}
     def add_player(self, userid, nick):
         if len(self.config.players) == self.max_players:
             raise GameFullError()
@@ -56,17 +62,21 @@ class BaseGame:
         self.update_history()
     def log(self, message):
         self.current_step_log.append(message)
+    def get_public_view(self):
+        return {**self.get_lobby_info(), **self.model.get_public_view()}
+    def get_player_view(self, userid):
+        return {**self.get_lobby_info(), **self.model.get_player_view(userid)}
     def update_history(self):
         if len(self.history) == 0:
             last_step_json = HistoryStep(public_view={}, player_views={uid: {} for uid in self.config.players}).to_json()
         else:
             last_step_json = self.history[-1].to_json()
         step = HistoryStep(log_message=' '.join(self.current_step_log))
-        pv = self.model.get_public_view()
+        pv = self.get_public_view()
         step.public_view = pv
         step.public_view_delta = json_delta.diff(last_step_json['public_view'], pv, verbose=False)
         for uid in self.config.players:
-            spv = self.model.get_player_view(uid)
+            spv = self.get_player_view(uid)
             step.player_views[uid] = spv
             step.player_view_deltas[uid] = json_delta.diff(last_step_json['player_views'][uid], spv, verbose=False)
         self.history.append(step)
@@ -74,6 +84,7 @@ class BaseGame:
     def get_observer_channel(self):
         return f'{self.config.gameid}-observers'
     def get_channel_for_user(self, userid):
+        print(userid, self.config.players)
         if userid in self.config.players:
             return f'{self.config.gameid}-player-{userid}'
         else:
@@ -118,12 +129,22 @@ class SquareSubtractionGame(BaseGame):
     max_players = 2
     type_string = 'subtract_square'
     model_class = SquareSubtractionModel
+    def get_lobby_info(self):
+        result = super(SquareSubtractionGame, self).get_lobby_info()
+        if self.model is not None:
+            result['turn'] = self.model.active_userid
+        return result
 
 class ExampleCardGame(BaseGame):
     min_players = 2
     max_players = 2
     type_string = 'example_card'
     model_class = ExampleCardGameModel
+    def get_lobby_info(self):
+        result = super(ExampleCardGame, self).get_lobby_info()
+        if self.model is not None:
+            result['turn'] = self.model.active_userid
+        return result
     @staticmethod
     def get_text_for_action(action):
         if action[0] == 'play':

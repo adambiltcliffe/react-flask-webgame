@@ -17,11 +17,6 @@ class BaseModel(jo.JsonObject):
         return 'PLAY' if self.result is None else 'END'
     def get_start_message(self):
         return 'Game started.'
-    def get_lobby_view(self):
-        return {'gameid': self.config.gameid,
-                'game_type': self.config.game_type,
-                'players': self.turn_order.copy(),
-                'playernicks': self.config.playernicks.copy()}
     def get_public_view(self):
         raise NotImplementedError()
     def get_player_view(self, userid):
@@ -65,14 +60,8 @@ class TurnBasedModel(BaseModel):
         raise NotImplementedError()
     def advance_turn(self):
         self.active_player_index = (self.active_player_index + 1) % len(self.turn_order)
-    def get_lobby_view(self):
-        result = super(TurnBasedModel, self).get_lobby_view()
-        result['turn'] = self.active_userid
-        return result
     def get_public_view(self):
-        result = self.get_lobby_view()
-        result['result'] = self.result
-        return result
+        return {}
     def get_player_view(self, userid):
         result = self.get_public_view()
         result['my_player_index'] = self.turn_order.index(userid)

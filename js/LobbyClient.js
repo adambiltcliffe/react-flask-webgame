@@ -10,7 +10,6 @@ function LobbyClient(props) {
 
   // Side effects
   useEffect(() => {
-    console.log(props)
     const sock = io('/lobby', {transports: ["websocket"], query: {token: props.auth.token}})
     sock.on('connect', () => {
       console.log('connected!!')
@@ -35,13 +34,13 @@ function LobbyClient(props) {
       console.log("Cleaning up...")
       sock.disconnect()
     }
-  }, [props.authToken])
+  }, [props.auth])
 
   // Now render
   if (!isLoaded) {
     return <div>Loading lobby ...</div>
   }
-  return (<ul>{Object.entries(games).map(([id, status]) => <GameLobbyEntry key={id} userid={props.auth.userid} gameid={id} status={status} />)}</ul>)
+  return (<ul>{Object.entries(games).map(([id, state]) => <GameLobbyEntry key={id} userid={props.auth.userid} gameid={id} state={state} />)}</ul>)
 }
 
 export default LobbyClient;

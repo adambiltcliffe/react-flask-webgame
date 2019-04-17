@@ -22,13 +22,15 @@ games = {}
 def make_game(c, id1, id2):
   g = c(next_game_id[0])
   g.add_player(id1, users[id1])
-  g.add_player(id2, users[id2])
-  g.start()
+  if id2 is not None:
+    g.add_player(id2, users[id2])
+    g.start()
   games[str(next_game_id[0])] = g
   next_game_id[0] += 1
 make_game(ExampleCardGame, 'test-albus', 'test-bungo')
 make_game(ExampleCardGame, 'test-albus', 'test-conan')
 make_game(SquareSubtractionGame, 'test-conan', 'test-bungo')
+make_game(ExampleCardGame, 'test-conan', None)
 
 class Conn(object):
   def __init__(self, encoded_token):
@@ -72,7 +74,7 @@ def connect_new_lobby_user():
   conns[request.sid] = Conn(request.args.get("token"))
   identity = conns[request.sid].identity
   print(f"{identity} connected to lobby namespace")
-  gamelist = {gameid: games[gameid].model.get_lobby_view() for gameid in games}
+  gamelist = {gameid: games[gameid].get_lobby_info() for gameid in games}
   emit('games_list', {'gamelist': gamelist})
 
 @socketio.on('disconnect', namespace='/lobby')
@@ -99,11 +101,14 @@ def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
     game = games[gameid]
-    identity = conns[request.sid].identity
-    channel = game.get_channel_for_user(identity)
-    join_room(channel)
-    emit('update_full', game.get_full_update(identity))
-    print(f"{identity} subscribed to game {gameid} ({channel})")
+    if game.status in ('WAIT', 'READY'):
+        emit('client_error', 'Game not started.')
+    else:
+        identity = conns[request.sid].identity
+        channel = game.get_channel_for_user(identity)
+        join_room(channel)
+        emit('update_full', game.get_full_update(identity))
+        print(f"{identity} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID.')
 

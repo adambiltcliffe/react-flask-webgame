@@ -48,7 +48,7 @@ function NavBar(props) {
     else {
       JWT.forget()
     }
-  }, [props.auth])
+  }, []) // only runs when component created
 
   const lobbyLink = (<Switch>
                         <Route exact path="/play/lobby" />

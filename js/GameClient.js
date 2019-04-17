@@ -74,7 +74,7 @@ function GameClient(props) {
     return function cleanup() {
        sock.disconnect()
     }
-  }, [props.gameid, props.authToken])
+  }, [props.gameid, props.auth])
 
   const resetShownStep = useCallback(() => { setShownStep(history.length - 1) }, [history])
 

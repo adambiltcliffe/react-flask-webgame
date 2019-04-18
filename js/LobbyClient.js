@@ -2,6 +2,9 @@ import React from 'react';
 import GameLobbyTableRow from './GameLobbyTableRow'
 
 function LobbyClient(props) {
+  if (!props.lobby.loaded) {
+    return (<div>Loading lobby ...</div>)
+  }
   return (<table>
             <thead><tr>
               <th>ID</th>
@@ -12,7 +15,7 @@ function LobbyClient(props) {
               <th />
             </tr></thead>
             <tbody>
-              {Object.entries(props.games).map(([id, state]) => <GameLobbyTableRow key={id} userid={props.auth.userid} gameid={id} state={state} />)}
+              {Object.entries(props.lobby.games).map(([id, state]) => <GameLobbyTableRow key={id} userid={props.auth.userid} gameid={id} state={state} />)}
             </tbody>
           </table>)
 }

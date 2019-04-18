@@ -1,49 +1,60 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
 import NavBar from './NavBar'
 import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
 
+const initialState = {connected: false,
+                      lobby: {
+                        opened: false,
+                        loaded: false,
+                        games: []
+                      },
+                      currentGame: {
+                        opened: false,
+                        loaded: false,
+                        id: null,
+                        state: null
+                      }}
+
 function Application (props) {
+  const socket = useRef(null)
+
   const [auth, setAuth] = useState({token: null})
 
-  const [isConnected, setConnected] = useState(false)
-  const [lobbyLoaded, setLobbyLoaded] = useState(false)
-  const [socket, setSocket] = useState(null)
-  const [games, setGames] = useState({})
+  const [state, setState] = useState(initialState)
 
   useEffect(() => {
-    const sock = io({transports: ["websocket"], query: {token: auth.token}})
-    sock.on('connect', () => {
+    socket.current = io({transports: ["websocket"], query: {token: auth.token}})
+    socket.current.on('connect', () => {
       console.log('master socket connected!!')
-      setConnected(true)
-      sock.emit('open_lobby')
+      setState((s) => ({...s, connected: true}))
+      socket.current.emit('open_lobby')
+      setState((s) => ({...s, lobby: {...s.lobby, opened: true}}))
     })
-    sock.on('disconnect', () => {
+    socket.current.on('disconnect', () => {
       console.log('master socket disconnected ...')
-      setConnected(false)
+      setState((s) => ({...s, connected: false}))
     })
-    sock.on('games_list', ({ gamelist }) => {
-      setGames(gamelist)
-      setLobbyLoaded(true)
+    socket.current.on('games_list', ({ gamelist }) => {
+      setState((s) => ({...s, lobby: {...s.lobby, loaded: true, games: gamelist}}))
     })
-    sock.on('game_status', ({ gameid, status }) => {
-      setGames((games) => {return {...games, [gameid]: status}})
+    socket.current.on('game_status', ({ gameid, status }) => {
+      setState((s) => ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [gameid]: status})})}))
     })
-    setSocket(sock)
     return function cleanup() {
       console.log("master socket cleaning up...")
-      sock.disconnect()
+      socket.current.close()
     }
   }, [auth])
 
   return  <BrowserRouter>
             <>
-              <NavBar auth={auth} setAuth={setAuth} isConnected={isConnected} />
+              <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
               <Switch>
                 <Route exact path="/play/lobby">
-                  {lobbyLoaded ? <LobbyClient auth={auth} games={games}/> : <div>Loading lobby ...</div>}
+                  <LobbyClient auth={auth} lobby={state.lobby}/>
                 </Route>
                 <Route path="/play/game/:gameid" render = {({ match }) => <GameClient gameid={match.params.gameid} auth={auth} />} />
                 <Route><Redirect to="/404" /></Route>

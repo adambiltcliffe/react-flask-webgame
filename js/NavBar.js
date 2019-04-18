@@ -34,7 +34,9 @@ function NavBar(props) {
   function handleLogout(event) {
     event.preventDefault()
     JWT.forget()
-    props.setAuth({token: null})
+    props.setAuth({token: null,
+      userid: null,
+      nickname: null})
   }
 
   useEffect(() => {
@@ -47,6 +49,9 @@ function NavBar(props) {
     }
     else {
       JWT.forget()
+      props.setAuth({token: null,
+        userid: null,
+        nickname: null})
     }
   }, []) // only runs when component created
 
@@ -56,7 +61,7 @@ function NavBar(props) {
                       </Switch>)
   const connStr = 'Connected to server: ' + (props.isConnected ? 'Yes': 'No')
 
-  if (props.auth.token) {
+  if (props.auth && props.auth.token) {
     return (<div className="navbar">
       This is the nav bar!
       Logged in as {props.auth.nickname}.

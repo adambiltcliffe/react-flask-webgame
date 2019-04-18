@@ -107,6 +107,19 @@ def send_game_state_add_to_room(data):
   else:
     emit('client_error', 'Bad game ID.')
 
+@socketio.on('close_game')
+def close_game(data):
+  gameid = data.get('gameid', None)
+  if gameid is not None and gameid in games:
+    game = games[gameid]
+    identity = conns[request.sid].identity
+    channel = game.get_channel_for_user(identity)
+    leave_room(channel)
+  else:
+    emit('client_error', 'Bad game ID.')
+
+
+
 @socketio.on('game_action')
 def game_action(data):
   identity = conns[request.sid].identity

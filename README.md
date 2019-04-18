@@ -9,11 +9,23 @@ Add functionality to create games in the lobby
 Refactoring, bugfixing etc.
 ---------------------------
 
+Make Application use a reducer for state management
+
+Find a way to avoid rebinding setShownStep etc. to the gameid in GameClient
+
 Make a RendererSelector component with lazy loading
 
-Finish moving all the socket stuff into one place rather than duplicated in LobbyClient/GameClient
-Handle the brief opening and closing of anonymous sockets while loading?
+Avoid destroying/recreating the socket when logging in/out
+
 Handle token expirations in some sensible way?
+
+Find some way of avoiding trouble with race conditions when connecting/disconnecting?
+
+Remove reliance on my_player_index (which is buggy)
+
+Allow server to provide better prompt text
+
+Make sure prompts etc. are disabled if the connection has gone away
 
 
 Won't add in this (generic) version

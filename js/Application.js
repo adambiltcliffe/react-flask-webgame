@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
@@ -26,12 +26,11 @@ function Application (props) {
   const [state, setState] = useState(initialState)
 
   useEffect(() => {
+    console.log("gameclient effect")
     socket.current = io({transports: ["websocket"], query: {token: auth.token}})
     socket.current.on('connect', () => {
       console.log('master socket connected!!')
       setState((s) => ({...s, connected: true}))
-      socket.current.emit('open_lobby')
-      setState((s) => ({...s, lobby: {...s.lobby, opened: true}}))
     })
     socket.current.on('disconnect', () => {
       console.log('master socket disconnected ...')
@@ -49,12 +48,24 @@ function Application (props) {
     }
   }, [auth])
 
+  const openLobby = useCallback(() => {
+    console.log("Opening lobby")
+    socket.current.emit('open_lobby')
+    setState((s) => ({...s, lobby: {...s.lobby, opened: true}}))
+  })
+
+  const closeLobby = useCallback(() => {
+    console.log("Closing lobby")
+    socket.current.emit('close_lobby')
+    setState((s) => ({...s, lobby: {...s.lobby, closed: true}}))
+  })
+
   return  <BrowserRouter>
             <>
               <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
               <Switch>
                 <Route exact path="/play/lobby">
-                  <LobbyClient auth={auth} lobby={state.lobby}/>
+                  <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
                 </Route>
                 <Route path="/play/game/:gameid" render = {({ match }) => <GameClient gameid={match.params.gameid} auth={auth} />} />
                 <Route><Redirect to="/404" /></Route>

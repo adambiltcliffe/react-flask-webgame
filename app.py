@@ -6,7 +6,7 @@ from collections import defaultdict
 from flask import (Flask, jsonify, redirect, render_template, request,
                    send_from_directory)
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from jwt import DecodeError
 
 from game import ExampleCardGame, SquareSubtractionGame, IllegalAction
@@ -86,6 +86,10 @@ def send_lobby_state_add_to_room():
   gamelist = {gameid: games[gameid].get_lobby_info() for gameid in games}
   emit('games_list', {'gamelist': gamelist})
   join_room('lobby')
+
+@socketio.on('close_lobby')
+def close_lobby():
+  leave_room('lobby')
 
 @socketio.on('open_game')
 def send_game_state_add_to_room(data):

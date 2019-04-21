@@ -63,9 +63,7 @@ class TurnBasedModel(BaseModel):
     def get_public_view(self):
         return {}
     def get_player_view(self, userid):
-        result = self.get_public_view()
-        result['my_player_index'] = self.turn_order.index(userid)
-        return result
+        return self.get_public_view()
 
 class SquareSubtractionModel(TurnBasedModel):
     number = jo.IntegerProperty()

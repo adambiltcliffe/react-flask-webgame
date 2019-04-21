@@ -143,7 +143,7 @@ function Application (props) {
       return ({...s, games: {...s.games, [currentGameid]: {...getInitialGameState(), opened: true}}})
     })
     setState((s) => { console.log(s); return s })
-  }, [])
+  }, [currentGameid])
 
   const closeGame = useCallback(() => {
     console.log("Closing game " + currentGameid)

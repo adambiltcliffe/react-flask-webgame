@@ -25,10 +25,10 @@ function GameClient(props) {
   const passedPrompts = (props.game.shownStep == props.game.states.length - 1) ? props.game.prompts : {history: props.resetShownStep}
   switch(currentGame.game_type) {
     case 'example_card':
-      renderer = <CardGameRenderer game={currentGame} prompts={passedPrompts} dispatchAction={props.dispatchAction} />
+      renderer = <CardGameRenderer game={currentGame} userid={props.auth.userid} prompts={passedPrompts} dispatchAction={props.dispatchAction} />
       break;
     default:
-      renderer = <DefaultRenderer game={currentGame} prompts={passedPrompts} dispatchAction={props.dispatchAction} />
+      renderer = <DefaultRenderer game={currentGame} userid={props.auth.userid} prompts={passedPrompts} dispatchAction={props.dispatchAction} />
   }
   return (<>
             {renderer}

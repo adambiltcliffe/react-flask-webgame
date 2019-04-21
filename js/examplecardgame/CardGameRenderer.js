@@ -2,10 +2,10 @@ import React from 'react'
 import Card from './Card'
 import PromptBox from '../PromptBox'
 
-function CardGameTextBox(props) {
-  let pix = props.game.my_player_index
+function CardGameRenderer(props) {
+  let pix = props.game.players.indexOf(props.userid)
   let playerList
-  if (pix !== undefined) {
+  if (pix !== -1) {
     playerList = props.game.playernicks[props.game.players[pix]] + ' (you) vs. ' + props.game.playernicks[props.game.players[1 - pix]]
   }
   else {
@@ -13,7 +13,7 @@ function CardGameTextBox(props) {
   }
   let stack = props.game.stack.map((n, idx) => { return <Card key={idx} value={n} /> })
   let otherHands = Object.entries(props.game.hand_counts).map(([k, v]) => {
-    if (props.game.players[props.game.my_player_index] == k) { return null }
+    if (pix != -1 && props.game.players[pix] == k) { return null }
     let hiddenCards = [];
     for (let i=0; i<v; i++) {
       hiddenCards.push(<Card key={i} value="?" />)
@@ -52,4 +52,4 @@ function CardGameTextBox(props) {
           </>);
 }
 
-export default CardGameTextBox;
+export default CardGameRenderer;

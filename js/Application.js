@@ -3,7 +3,7 @@ import io from 'socket.io-client'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
 import NavBar from './NavBar'
-import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
+import { Route, Switch, Redirect, withRouter } from 'react-router-dom';
 
 function nonDestructivePatch(oldStruc, patch) {
   /* This is inefficient and should eventually be fixed by rewriting JSON_delta */
@@ -31,6 +31,8 @@ const getInitialGameState = () => ({
 })
 
 function Application (props) {
+  console.log(Object.keys(props))
+
   const socket = useRef(null)
   const [auth, setAuth] = useState(null)
   const [state, setState] = useState(getInitialState)
@@ -162,27 +164,25 @@ function Application (props) {
     return <div>Client error: {state.error}</div>
   }
 
-  return  <BrowserRouter>
-            <>
-              <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
-              <Switch>
-                <Route exact path="/play/lobby">
-                  <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
-                </Route>
-                <Route path="/play/game/:gameid"render = {({ match }) => <GameClient
-                  gameid={match.params.gameid}
-                  auth={auth}
-                  game={state.games[match.params.gameid]}
-                  openGame={openGame}
-                  closeGame={closeGame}
-                  setShownStep={setShownStep}
-                  resetShownStep={resetShownStep}
-                  dispatchAction={dispatchAction}
-                  isConnected={state.connected} />} />
-                <Route><Redirect to="/404" /></Route>
-              </Switch>
-            </>
-          </BrowserRouter>
+  return  <>
+            <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
+            <Switch>
+              <Route exact path="/play/lobby">
+                <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
+              </Route>
+              <Route path="/play/game/:gameid"render = {({ match }) => <GameClient
+                gameid={match.params.gameid}
+                auth={auth}
+                game={state.games[match.params.gameid]}
+                openGame={openGame}
+                closeGame={closeGame}
+                setShownStep={setShownStep}
+                resetShownStep={resetShownStep}
+                dispatchAction={dispatchAction}
+                isConnected={state.connected} />} />
+              <Route><Redirect to="/404" /></Route>
+            </Switch>
+          </>
 };
 
-export default Application;
+export default withRouter(Application);

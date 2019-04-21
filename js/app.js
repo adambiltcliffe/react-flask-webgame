@@ -1,6 +1,6 @@
-import Application from './Application';
+import TopLevelRouter from './TopLevelRouter';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import '../css/game.css'
 
-ReactDOM.render(<Application/>, document.getElementById('reactRoot'));
+ReactDOM.render(<TopLevelRouter/>, document.getElementById('reactRoot'));

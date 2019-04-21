@@ -9,9 +9,9 @@ Add functionality to create games in the lobby
 Refactoring, bugfixing etc.
 ---------------------------
 
-Make Application use a reducer for state management
-
 Make a RendererSelector component with lazy loading
+
+Find a way to avoid needing to include gameid in the reducer actions for set_shown_step etc.
 
 Avoid destroying/recreating the socket when logging in/out
 

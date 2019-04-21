@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import io from 'socket.io-client'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
@@ -32,13 +32,80 @@ const getInitialGameState = () => ({
   shownStep: 0
 })
 
+const reducer = (s, action) => {
+  console.log(JSON.stringify(action))
+  switch (action.type) {
+    case 'connect':
+      // erase all other state when we connect as we are probably not in sync with the server
+      return ({...getInitialState(), connected: true})
+    case 'disconnect':
+      return ({...s, connected: false})
+    case 'client_error':
+      return ({...s, error: action.error})
+    case 'games_list':
+      return ({...s, lobby: {...s.lobby, loaded: true, games: action.gamelist}})
+    case 'game_status':
+      return ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [action.gameid]: action.status})})})
+    case 'update_full':
+      if (s.games[action.gameid] === undefined) {
+        console.log('Ignoring an update for an unknown game')
+        return s
+      }
+      else {
+        console.log('processing update')
+        let computedState = {}
+        let computedStateArray = []
+        action.history.map((step) => {
+          computedState = nonDestructivePatch(computedState, step.delta)
+          computedStateArray.push(computedState)
+        })
+        return ({...s, games: {...s.games, [action.gameid]: {
+          opened: true,
+          loaded: true,
+          history: action.history,
+          prompts: action.prompts,
+          states: computedStateArray,
+          shownStep: computedStateArray.length - 1
+        }}})
+      }
+    case 'update_step':
+      if (s.games[action.gameid] === undefined || action.index != s.games[action.gameid].history.length) {
+        return s
+      }
+      else {
+        let g = s.games[action.gameid]
+        let history = g.history.concat([action.step])
+        let states = g.states.concat(nonDestructivePatch(g.states[action.index - 1], action.step.delta))
+        let shownStep = (g.shownStep == g.history.length - 1) ? g.shownStep + 1 : g.shownStep
+        return ({...s, games: {...s.games, [action.gameid]: { opened: true, loaded: true, history, prompts: action.prompts, states, shownStep }}})
+      }
+    case 'open_lobby':
+      return ({...s, lobby: {...s.lobby, opened: true}})
+    case 'close_lobby':
+      return ({...s, lobby: {...s.lobby, closed: true}})
+    case 'open_game':
+      if (s.games[action.gameid] !== undefined) {
+        return s // if it was already in state.games, don't erase what we have
+      }
+      return ({...s, games: {...s.games, [action.gameid]: {...getInitialGameState(), opened: true}}})
+    case 'close_game':
+      return ({...s, games: {...s.games, [action.gameid]: undefined}})
+    case 'set_shown_step':
+      return ({...s, games: {...s.games, [action.gameid]: {...s.games[action.gameid], shownStep: action.shownStep}}})
+    case 'reset_shown_step':
+      return ({...s, games: {...s.games, [action.gameid]: {...s.games[action.gameid], shownStep: s.games[action.gameid].history.length - 1}}})
+    default:
+      console.log('Unrecognised action: ' + JSON.stringify(action))
+  }
+}
+
 function Application (props) {
   const matchedPath = matchPath(location.pathname, gameRoutePath)
   const currentGameid = (matchedPath && matchedPath.params.gameid) || null
 
   const socket = useRef(null)
   const [auth, setAuth] = useState(null)
-  const [state, setState] = useState(getInitialState)
+  const [state, dispatch] = useReducer(reducer, null, getInitialState)
   useEffect(() => {
     if (!auth) {
       console.log('Doing nothing for now, auth info not loaded')
@@ -48,69 +115,25 @@ function Application (props) {
       console.log("application effect creating socket")
       socket.current = io({transports: ["websocket"], query: {token: auth.token}})
       socket.current.on('connect', () => {
-        console.log('socket connected!! scheduling setState call to delete saved state')
-        // erase all other state when we connect as we are probably not in sync with the server
-        setState((s) => {
-          console.log('deleting all the state')
-          return ({...getInitialState(), connected: true})
-        })
+        dispatch({type: 'connect'})
       })
       socket.current.on('disconnect', () => {
-        console.log('socket disconnected ...')
-        setState((s) => {
-          console.log('marking socket as disconnected in state')
-          return ({...s, connected: false})
-        })
+        dispatch({type: 'disconnect'})
       })
       socket.current.on('client_error', (error) => {
-        setState((s) => ({...s, error}))
+        dispatch({type: 'client_error', error})
       })
       socket.current.on('games_list', ({ gamelist }) => {
-        setState((s) => ({...s, lobby: {...s.lobby, loaded: true, games: gamelist}}))
+        dispatch({type: 'games_list', gamelist})
       })
       socket.current.on('game_status', ({ gameid, status }) => {
-        setState((s) => ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [gameid]: status})})}))
+        dispatch({type: 'game_status', gameid, status})
       })
       socket.current.on('update_full', ({ gameid, history, prompts }) => {
-        console.log('received update')
-        console.log('scheduling setstate call to process the update')
-        setState((s) => {
-          if (s.games[gameid] === undefined) {
-            console.log('Ignoring an update for an unknown game')
-            return s
-          }
-          else {
-            console.log('processing update')
-            let computedState = {}
-            let computedStateArray = []
-            history.map((step) => {
-              computedState = nonDestructivePatch(computedState, step.delta)
-              computedStateArray.push(computedState)
-            })
-            return ({...s, games: {...s.games, [gameid]: {
-              opened: true,
-              loaded: true,
-              history,
-              prompts,
-              states: computedStateArray,
-              shownStep: computedStateArray.length - 1
-            }}})
-          }
-        })
+        dispatch({type: 'update_full', gameid, history, prompts})
       })
       socket.current.on('update_step', ({ gameid, index, step, prompts }) => {
-        setState((s) => {
-          if (s.games[gameid] === undefined || index != s.games[gameid].history.length) {
-            return s
-          }
-          else {
-            let g = s.games[gameid]
-            let history = g.history.concat([step])
-            let states = g.states.concat(nonDestructivePatch(g.states[index - 1], step.delta))
-            let shownStep = (g.shownStep == g.history.length - 1) ? g.shownStep + 1 : g.shownStep
-            return ({...s, games: {...s.games, [gameid]: { opened: true, loaded: true, history, prompts, states, shownStep }}})
-          }
-        })
+        dispatch({type: 'update_step', gameid, index, step, prompts})
       })
       return (() => {
         console.log("master socket cleaning up...")
@@ -120,43 +143,31 @@ function Application (props) {
   }, [auth])
 
   const openLobby = useCallback(() => {
-    console.log("Opening lobby")
     socket.current.emit('open_lobby')
-    setState((s) => ({...s, lobby: {...s.lobby, opened: true}}))
+    dispatch({type: 'open_lobby'})
   }, [])
 
   const closeLobby = useCallback(() => {
-    console.log("Closing lobby")
     socket.current.emit('close_lobby')
-    setState((s) => ({...s, lobby: {...s.lobby, closed: true}}))
+    dispatch({type: 'close_lobby'})
   }, [])
 
   const openGame = useCallback(() => {
-    console.log("Opening game " + JSON.stringify(currentGameid))
     socket.current.emit('open_game', {gameid: currentGameid})
-    console.log('scheduling setstate call to mark game as opened')
-    setState((s) => {
-      console.log('marking game as opened')
-      if (s.games[currentGameid] !== undefined) {
-        return s // if it was already in state.games, don't erase what we have
-      }
-      return ({...s, games: {...s.games, [currentGameid]: {...getInitialGameState(), opened: true}}})
-    })
-    setState((s) => { console.log(s); return s })
+    dispatch({type: 'open_game', gameid: currentGameid})
   }, [currentGameid])
 
   const closeGame = useCallback(() => {
-    console.log("Closing game " + currentGameid)
     socket.current.emit('close_game', {gameid: currentGameid})
-    setState((s) => ({...s, games: {...s.games, [currentGameid]: undefined}}))
+    dispatch({type: 'close_game', gameid: currentGameid})
   }, [currentGameid])
 
   const setShownStep = useCallback((shownStep) => {
-    setState((s) => ({...s, games: {...s.games, [currentGameid]: {...s.games[currentGameid], shownStep}}}))
+    dispatch({type: 'set_shown_step', gameid: currentGameid, shownStep})
   }, [currentGameid])
 
   const resetShownStep = useCallback(() => {
-    setState((s) => ({...s, games: {...s.games, [currentGameid]: {...s.games[currentGameid], shownStep: s.games[currentGameid].history.length - 1}}}))
+    dispatch({type: 'reset_shown_step', gameid: currentGameid})
   }, [currentGameid])
 
   const dispatchAction = useCallback((action) => {

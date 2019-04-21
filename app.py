@@ -94,6 +94,7 @@ def close_lobby():
 @socketio.on('open_game')
 def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
+  print('open_game: ' + repr(gameid))
   if gameid is not None and gameid in games:
     game = games[gameid]
     if game.status in ('WAIT', 'READY'):

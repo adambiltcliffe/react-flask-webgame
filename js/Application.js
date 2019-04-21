@@ -3,13 +3,15 @@ import io from 'socket.io-client'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
 import NavBar from './NavBar'
-import { Route, Switch, Redirect, withRouter } from 'react-router-dom';
+import { Route, Switch, Redirect, matchPath, withRouter } from 'react-router-dom';
 
 function nonDestructivePatch(oldStruc, patch) {
   /* This is inefficient and should eventually be fixed by rewriting JSON_delta */
   const newStruc = JSON.parse(JSON.stringify(oldStruc))
   return JSON_delta.patch(newStruc, patch)
 }
+
+const gameRoutePath = "/play/game/:gameid"
 
 const getInitialState = () => ({
   connected: false,
@@ -31,7 +33,8 @@ const getInitialGameState = () => ({
 })
 
 function Application (props) {
-  console.log(Object.keys(props))
+  const matchedPath = matchPath(location.pathname, gameRoutePath)
+  const currentGameid = (matchedPath && matchedPath.params.gameid) || null
 
   const socket = useRef(null)
   const [auth, setAuth] = useState(null)
@@ -128,37 +131,37 @@ function Application (props) {
     setState((s) => ({...s, lobby: {...s.lobby, closed: true}}))
   }, [])
 
-  const openGame = useCallback((gameid) => {
-    console.log("Opening game " + gameid)
-    socket.current.emit('open_game', {gameid})
+  const openGame = useCallback(() => {
+    console.log("Opening game " + JSON.stringify(currentGameid))
+    socket.current.emit('open_game', {gameid: currentGameid})
     console.log('scheduling setstate call to mark game as opened')
     setState((s) => {
       console.log('marking game as opened')
-      if (s.games[gameid] !== undefined) {
+      if (s.games[currentGameid] !== undefined) {
         return s // if it was already in state.games, don't erase what we have
       }
-      return ({...s, games: {...s.games, [gameid]: {...getInitialGameState(), opened: true}}})
+      return ({...s, games: {...s.games, [currentGameid]: {...getInitialGameState(), opened: true}}})
     })
     setState((s) => { console.log(s); return s })
   }, [])
 
-  const closeGame = useCallback((gameid) => {
-    console.log("Closing game " + gameid)
-    socket.current.emit('close_game', {gameid})
-    setState((s) => ({...s, games: {...s.games, [gameid]: undefined}}))
-  }, [])
+  const closeGame = useCallback(() => {
+    console.log("Closing game " + currentGameid)
+    socket.current.emit('close_game', {gameid: currentGameid})
+    setState((s) => ({...s, games: {...s.games, [currentGameid]: undefined}}))
+  }, [currentGameid])
 
-  const setShownStep = useCallback((gameid, shownStep) => {
-    setState((s) => ({...s, games: {...s.games, [gameid]: {...s.games[gameid], shownStep}}}))
-  }, [])
+  const setShownStep = useCallback((shownStep) => {
+    setState((s) => ({...s, games: {...s.games, [currentGameid]: {...s.games[currentGameid], shownStep}}}))
+  }, [currentGameid])
 
-  const resetShownStep = useCallback((gameid) => {
-    setState((s) => ({...s, games: {...s.games, [gameid]: {...s.games[gameid], shownStep: s.games[gameid].history.length - 1}}}))
-  }, [])
+  const resetShownStep = useCallback(() => {
+    setState((s) => ({...s, games: {...s.games, [currentGameid]: {...s.games[currentGameid], shownStep: s.games[currentGameid].history.length - 1}}}))
+  }, [currentGameid])
 
-  const dispatchAction = useCallback((gameid, action) => {
-    socket.current.emit('game_action', {gameid, action})
-  }, [])
+  const dispatchAction = useCallback((action) => {
+    socket.current.emit('game_action', {gameid: currentGameid, action})
+  }, [currentGameid])
 
   if (state.error) {
     return <div>Client error: {state.error}</div>
@@ -170,7 +173,7 @@ function Application (props) {
               <Route exact path="/play/lobby">
                 <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
               </Route>
-              <Route path="/play/game/:gameid"render = {({ match }) => <GameClient
+              <Route path={gameRoutePath} render = {({ match }) => <GameClient
                 gameid={match.params.gameid}
                 auth={auth}
                 game={state.games[match.params.gameid]}

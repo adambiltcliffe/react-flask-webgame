@@ -21,9 +21,10 @@ const getInitialState = () => ({
     loaded: false,
     games: []
   },
-  games: {}
+  game: getInitialGameState()
 })
 const getInitialGameState = () => ({
+  id: null,
   opened: false,
   loaded: false,
   history: [],
@@ -47,7 +48,7 @@ const reducer = (s, action) => {
     case 'game_status':
       return ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [action.gameid]: action.status})})})
     case 'update_full':
-      if (s.games[action.gameid] === undefined) {
+      if (s.game.id != action.gameid) {
         console.log('Ignoring an update for an unknown game')
         return s
       }
@@ -59,41 +60,38 @@ const reducer = (s, action) => {
           computedState = nonDestructivePatch(computedState, step.delta)
           computedStateArray.push(computedState)
         })
-        return ({...s, games: {...s.games, [action.gameid]: {
+        return ({...s, game: {
+          id: action.gameid,
           opened: true,
           loaded: true,
           history: action.history,
           prompts: action.prompts,
           states: computedStateArray,
           shownStep: computedStateArray.length - 1
-        }}})
+        }})
       }
     case 'update_step':
-      if (s.games[action.gameid] === undefined || action.index != s.games[action.gameid].history.length) {
+      if (s.game.id != action.gameid || action.index != s.game.history.length) {
         return s
       }
       else {
-        let g = s.games[action.gameid]
-        let history = g.history.concat([action.step])
-        let states = g.states.concat(nonDestructivePatch(g.states[action.index - 1], action.step.delta))
-        let shownStep = (g.shownStep == g.history.length - 1) ? g.shownStep + 1 : g.shownStep
-        return ({...s, games: {...s.games, [action.gameid]: { opened: true, loaded: true, history, prompts: action.prompts, states, shownStep }}})
+        let history = s.game.history.concat([action.step])
+        let states = s.game.states.concat(nonDestructivePatch(s.game.states[action.index - 1], action.step.delta))
+        let shownStep = (s.game.shownStep == s.game.history.length - 1) ? s.game.shownStep + 1 : s.game.shownStep
+        return ({...s, game: { id: action.gameid, opened: true, loaded: true, history, prompts: action.prompts, states, shownStep }})
       }
     case 'open_lobby':
       return ({...s, lobby: {...s.lobby, opened: true}})
     case 'close_lobby':
       return ({...s, lobby: {...s.lobby, closed: true}})
     case 'open_game':
-      if (s.games[action.gameid] !== undefined) {
-        return s // if it was already in state.games, don't erase what we have
-      }
-      return ({...s, games: {...s.games, [action.gameid]: {...getInitialGameState(), opened: true}}})
+      return ({...s, game: {...getInitialGameState(), id: action.gameid, opened: true}})
     case 'close_game':
-      return ({...s, games: {...s.games, [action.gameid]: undefined}})
+      return ({...s, game: getInitialGameState()})
     case 'set_shown_step':
-      return ({...s, games: {...s.games, [action.gameid]: {...s.games[action.gameid], shownStep: action.shownStep}}})
+      return ({...s, game: {...s.game, shownStep: action.shownStep}})
     case 'reset_shown_step':
-      return ({...s, games: {...s.games, [action.gameid]: {...s.games[action.gameid], shownStep: s.games[action.gameid].history.length - 1}}})
+      return ({...s, game: {...s.game, shownStep: s.game.history.length - 1}})
     default:
       console.log('Unrecognised action: ' + JSON.stringify(action))
   }
@@ -163,12 +161,12 @@ function Application (props) {
   }, [currentGameid])
 
   const setShownStep = useCallback((shownStep) => {
-    dispatch({type: 'set_shown_step', gameid: currentGameid, shownStep})
-  }, [currentGameid])
+    dispatch({type: 'set_shown_step', shownStep})
+  }, [])
 
   const resetShownStep = useCallback(() => {
-    dispatch({type: 'reset_shown_step', gameid: currentGameid})
-  }, [currentGameid])
+    dispatch({type: 'reset_shown_step'})
+  }, [])
 
   const dispatchAction = useCallback((action) => {
     socket.current.emit('game_action', {gameid: currentGameid, action})
@@ -187,7 +185,7 @@ function Application (props) {
               <Route path={gameRoutePath} render = {({ match }) => <GameClient
                 gameid={match.params.gameid}
                 auth={auth}
-                game={state.games[match.params.gameid]}
+                game={state.game}
                 openGame={openGame}
                 closeGame={closeGame}
                 setShownStep={setShownStep}

@@ -46,8 +46,11 @@ class BaseGame:
                 'players': self.config.players.copy(),
                 'playernicks': self.config.playernicks.copy(),
                 'status': self.status}
+    @property
+    def full(self):
+        return len(self.config.players) == self.max_players
     def add_player(self, userid, nick):
-        if len(self.config.players) == self.max_players:
+        if self.full:
             raise GameFullError()
         if self.model is not None:
             raise GameAlreadyStartedError()

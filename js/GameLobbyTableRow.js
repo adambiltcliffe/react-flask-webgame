@@ -1,11 +1,18 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import JoinGameButton from './JoinGameButton'
 
 function GameLobbyTableRow(props) {
   let link = null
   if (props.state.status != 'WAIT' && props.state.status != 'READY') {
     const verb = (props.state.players.includes(props.userid) && props.state.status != 'END') ? "Play!" : "View"
     link = <Link to={`/play/game/${props.gameid}`}>{verb}</Link>
+  }
+  else if (props.state.status == 'WAIT' &&
+      !props.state.players.includes(props.userid) &&
+      props.isConnected &&
+      props.userid) {
+    link = <JoinGameButton gameid={props.gameid} />
   }
   const playerNames = props.state.players.map((userid) => props.state.playernicks[userid]).join(', ')
   return (<tr key={props.gameid}>

@@ -161,6 +161,7 @@ function Application (props) {
     dispatch({type: 'close_game', gameid: currentGameid})
   }, [currentGameid])
 
+  // handler functions to dispatch to reducer
   const setShownStep = useCallback((shownStep) => {
     dispatch({type: 'set_shown_step', shownStep})
   }, [])
@@ -169,6 +170,11 @@ function Application (props) {
     dispatch({type: 'reset_shown_step'})
   }, [])
 
+  // handler functions which write straight to socket
+  const joinGame = useCallback((gameid) => {
+    socket.current.emit('join_game', {gameid})
+  })
+
   const submitGameAction = useCallback((action) => {
     socket.current.emit('game_action', {gameid: currentGameid, action})
   }, [currentGameid])
@@ -176,6 +182,7 @@ function Application (props) {
   const handler = useMemo(() => ({
     setShownStep,
     resetShownStep,
+    joinGame,
     submitGameAction
   }))
 
@@ -184,14 +191,14 @@ function Application (props) {
   }
 
   return  <>
-            <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
-            <Switch>
-              <Route exact path="/play/lobby">
-                <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
-              </Route>
-              <Route path={gameRoutePath} render = {
-                ({ match }) =>
-                  <handlerContext.Provider value={handler}>
+            <handlerContext.Provider value={handler}>
+              <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
+              <Switch>
+                <Route exact path="/play/lobby">
+                  <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
+                </Route>
+                <Route path={gameRoutePath} render = {
+                  ({ match }) =>
                     <GameClient
                       gameid={match.params.gameid}
                       auth={auth}
@@ -199,9 +206,10 @@ function Application (props) {
                       openGame={openGame}
                       closeGame={closeGame}
                       isConnected={state.connected} />
-                  </handlerContext.Provider>} />
-              <Route><Redirect to="/404" /></Route>
-            </Switch>
+                } />
+                <Route><Redirect to="/404" /></Route>
+              </Switch>
+            </handlerContext.Provider>
           </>
 };
 

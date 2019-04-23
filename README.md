@@ -4,7 +4,9 @@ TO-DO LIST
 Added functionality
 -------------------
 
-Add functionality to create games in the lobby
+Add some sort of game configuration step in the lobby instead of instantly starting
+
+Add functionality to create new games in the lobby
 
 Refactoring, bugfixing etc.
 ---------------------------
@@ -18,6 +20,8 @@ Handle token expirations in some sensible way?
 Allow server to provide better prompt text
 
 Make sure prompts etc. are disabled if the connection has gone away
+
+Don't drop out to a loading message and hang there if the connection drops
 
 
 Won't add in this (generic) version

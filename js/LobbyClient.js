@@ -24,7 +24,7 @@ function LobbyClient(props) {
               <th />
             </tr></thead>
             <tbody>
-              {Object.entries(props.lobby.games).map(([id, state]) => <GameLobbyTableRow key={id} userid={props.auth.userid} gameid={id} state={state} />)}
+              {Object.entries(props.lobby.games).map(([id, state]) => <GameLobbyTableRow key={id} userid={props.auth.userid} gameid={id} state={state} isConnected={props.isConnected} />)}
             </tbody>
           </table>)
 }

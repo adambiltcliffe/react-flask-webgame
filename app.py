@@ -91,6 +91,29 @@ def send_lobby_state_add_to_room():
 def close_lobby():
   leave_room('lobby')
 
+@socketio.on('join_game')
+def join_game(data):
+    gameid = data.get('gameid', None)
+    print('open_game: ' + repr(gameid))
+    if gameid is not None and gameid in games:
+        identity = conns[request.sid].identity
+        game = games[gameid]
+        if identity in game.config.players:
+            emit('client_alert', 'You have already joined that game.')
+        elif game.status not in ('WAIT', 'READY'):
+            emit('client_alert', 'That game has already started.')
+        elif game.full:
+            emit('client_alert', 'That game is full.')
+        else:
+            game.add_player(identity, users[identity])
+            socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+            # this bit is temporary
+            if game.full:
+                game.start()
+                socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+    else:
+        emit('client_error', 'Bad game ID.')
+
 @socketio.on('open_game')
 def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
@@ -119,8 +142,6 @@ def close_game(data):
   else:
     emit('client_error', 'Bad game ID.')
 
-
-
 @socketio.on('game_action')
 def game_action(data):
   identity = conns[request.sid].identity
@@ -134,7 +155,6 @@ def game_action(data):
     try:
       for channel, message_type, data in games[gameid].handle_action(conns[request.sid].identity, data['action']):
         socketio.emit(message_type, data, room=channel)
-      # TODO next line should go to a lobby channel!!!
       socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
     except IllegalAction:
       emit('client_error', f'Illegal action data: {data}')

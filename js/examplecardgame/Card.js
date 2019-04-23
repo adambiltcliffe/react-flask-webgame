@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import MoveButton from '../MoveButton'
+import GameActionButton from '../GameActionButton'
 import PopupMenu from './PopupMenu'
 
 function Card(props) {
@@ -17,7 +17,7 @@ function Card(props) {
   if (hasChild && showChild) {
     popupMenuContent = props.prompt.map((item) => {
       const [text, action] = item;
-      return <div key={text}><MoveButton text={text} action={action} dismiss={hideChild} dispatchAction={props.dispatchAction} /></div>
+      return <div key={text}><GameActionButton text={text} action={action} dismiss={hideChild} /></div>
     })
   }
   return <span className="card-container">

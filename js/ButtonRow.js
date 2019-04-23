@@ -1,8 +1,8 @@
 import React from 'react';
-import MoveButton from './MoveButton'
+import GameActionButton from './GameActionButton'
 
 function ButtonRow(props) {
-  const buttons = props.moves.map(([text, action]) => <MoveButton key={action} dispatchAction={props.dispatchAction} text={text} action={action} />)
+  const buttons = props.moves.map(([text, action]) => <GameActionButton key={action} text={text} action={action} />)
   return (<div>
             {buttons}
           </div>);

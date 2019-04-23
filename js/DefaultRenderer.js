@@ -10,7 +10,7 @@ function DefaultRenderer(props) {
             <ul>
               {textRows}
             </ul>
-            <PromptBox prompts={props.prompts} dispatchAction={props.dispatchAction} />
+            <PromptBox prompts={props.prompts} />
           </>)
 }
 

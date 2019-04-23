@@ -11,13 +11,9 @@ Refactoring, bugfixing etc.
 
 Make a RendererSelector component with lazy loading
 
-Find a way to avoid needing to include gameid in the reducer actions for set_shown_step etc.
-
 Avoid destroying/recreating the socket when logging in/out
 
 Handle token expirations in some sensible way?
-
-Find some way of avoiding trouble with race conditions when connecting/disconnecting?
 
 Allow server to provide better prompt text
 

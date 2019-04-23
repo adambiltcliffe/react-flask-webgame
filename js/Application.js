@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import io from 'socket.io-client'
+import { handlerContext } from './handler'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
 import NavBar from './NavBar'
@@ -168,9 +169,15 @@ function Application (props) {
     dispatch({type: 'reset_shown_step'})
   }, [])
 
-  const dispatchAction = useCallback((action) => {
+  const submitGameAction = useCallback((action) => {
     socket.current.emit('game_action', {gameid: currentGameid, action})
   }, [currentGameid])
+
+  const handler = useMemo(() => ({
+    setShownStep,
+    resetShownStep,
+    submitGameAction
+  }))
 
   if (state.error) {
     return <div>Client error: {state.error}</div>
@@ -182,16 +189,17 @@ function Application (props) {
               <Route exact path="/play/lobby">
                 <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
               </Route>
-              <Route path={gameRoutePath} render = {({ match }) => <GameClient
-                gameid={match.params.gameid}
-                auth={auth}
-                game={state.game}
-                openGame={openGame}
-                closeGame={closeGame}
-                setShownStep={setShownStep}
-                resetShownStep={resetShownStep}
-                dispatchAction={dispatchAction}
-                isConnected={state.connected} />} />
+              <Route path={gameRoutePath} render = {
+                ({ match }) =>
+                  <handlerContext.Provider value={handler}>
+                    <GameClient
+                      gameid={match.params.gameid}
+                      auth={auth}
+                      game={state.game}
+                      openGame={openGame}
+                      closeGame={closeGame}
+                      isConnected={state.connected} />
+                  </handlerContext.Provider>} />
               <Route><Redirect to="/404" /></Route>
             </Switch>
           </>

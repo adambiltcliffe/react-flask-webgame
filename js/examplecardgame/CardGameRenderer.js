@@ -23,13 +23,13 @@ function CardGameRenderer(props) {
   let myHand = null;
   if (props.game.my_hand) {
     myHand = <div className="para">You: {props.game.my_hand.map((n, idx) => {
-      return <Card key={idx} value={n} prompt={props.prompts.hand_card && props.prompts.hand_card[n]} dispatchAction={props.dispatchAction} />
+      return <Card key={idx} value={n} prompt={props.prompts.hand_card && props.prompts.hand_card[n]} />
     })}</div>
   }
   let viewedCards = null;
   if (props.game.viewing) {
     viewedCards = <div className="para">Top cards of deck: {props.game.viewing.map((n, idx) => {
-      return <Card key={idx} value={n} prompt={props.prompts.viewed_card && props.prompts.viewed_card[n]} dispatchAction={props.dispatchAction} />
+      return <Card key={idx} value={n} prompt={props.prompts.viewed_card && props.prompts.viewed_card[n]} />
     })}</div>
   }
   let winnerInfo = null;
@@ -48,7 +48,7 @@ function CardGameRenderer(props) {
               {viewedCards}
             </div>
             {winnerInfo}
-            <PromptBox prompts={props.prompts} dispatchAction={props.dispatchAction} />
+            <PromptBox prompts={props.prompts} />
           </>);
 }
 

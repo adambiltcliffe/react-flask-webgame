@@ -9,7 +9,7 @@ function PromptBox(props) {
     text = "(Viewing game history.)"
   }
   else if (props.prompts.buttons && props.prompts.buttons.length > 0) {
-    buttonRow = <div className="para"><ButtonRow moves={props.prompts.buttons} dispatchAction={props.dispatchAction} /></div>
+    buttonRow = <div className="para"><ButtonRow moves={props.prompts.buttons} /></div>
     text = "Your turn to act."
   }
   return (<>

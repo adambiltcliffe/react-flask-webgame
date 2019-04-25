@@ -134,6 +134,9 @@ function Application (props) {
       socket.current.on('update_step', ({ gameid, index, step, prompts }) => {
         dispatch({type: 'update_step', gameid, index, step, prompts})
       })
+      socket.current.on('client_alert', (message) => {
+        alert(message)
+      })
       return (() => {
         console.log("master socket cleaning up...")
         socket.current.close()
@@ -171,6 +174,10 @@ function Application (props) {
   }, [])
 
   // handler functions which write straight to socket
+  const createGame = useCallback((gametype) => {
+    socket.current.emit('create_game', {gametype})
+  })
+
   const joinGame = useCallback((gameid) => {
     socket.current.emit('join_game', {gameid})
   })
@@ -182,6 +189,7 @@ function Application (props) {
   const handler = useMemo(() => ({
     setShownStep,
     resetShownStep,
+    createGame,
     joinGame,
     submitGameAction
   }))

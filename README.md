@@ -6,7 +6,6 @@ Added functionality
 
 Add some sort of game configuration step in the lobby instead of instantly starting
 
-Add functionality to create new games in the lobby
 
 Refactoring, bugfixing etc.
 ---------------------------
@@ -16,6 +15,9 @@ Make a RendererSelector component with lazy loading
 Avoid destroying/recreating the socket when logging in/out
 
 Handle token expirations in some sensible way?
+
+Display client_alert messages in a better way
+
 
 Won't add in this (generic) version
 -----------------------------------

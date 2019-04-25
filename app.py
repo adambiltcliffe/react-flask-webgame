@@ -19,18 +19,20 @@ jwt = JWTManager(app)
 users = {'test-albus': 'Albus Dumbledore', 'test-bungo': 'Mr Bungo', 'test-conan': 'Conan the Barbarian'}
 next_game_id = [1]
 games = {}
-def make_game(c, id1, id2):
-  g = c(next_game_id[0])
-  g.add_player(id1, users[id1])
-  if id2 is not None:
-    g.add_player(id2, users[id2])
-    g.start()
-  games[str(next_game_id[0])] = g
-  next_game_id[0] += 1
+def make_game(c, id1, id2=None):
+    gameid = str(next_game_id[0])
+    g = c(gameid)
+    g.add_player(id1, users[id1])
+    if id2 is not None:
+        g.add_player(id2, users[id2])
+        g.start()
+    games[gameid] = g
+    next_game_id[0] += 1
+    return gameid
 make_game(ExampleCardGame, 'test-albus', 'test-bungo')
 make_game(ExampleCardGame, 'test-albus', 'test-conan')
 make_game(SquareSubtractionGame, 'test-conan', 'test-bungo')
-make_game(ExampleCardGame, 'test-conan', None)
+make_game(ExampleCardGame, 'test-conan')
 
 class Conn(object):
   def __init__(self, encoded_token):
@@ -91,6 +93,19 @@ def send_lobby_state_add_to_room():
 def close_lobby():
   leave_room('lobby')
 
+@socketio.on('create_game')
+def create_game(data):
+    gametype = data.get('gametype')
+    if gametype != 'subtract_square' and gametype != 'example_card':
+        emit('client_error', 'Unknown game type.')
+    else:
+        identity = conns[request.sid].identity
+        if identity == 'anonymous':
+            emit('client_alert', 'You must be logged in to create a game.')
+        else:
+            gclass = {'subtract_square': SquareSubtractionGame, 'example_card': ExampleCardGame}[gametype]
+            emit_lobby_update(make_game(gclass, identity))
+
 @socketio.on('join_game')
 def join_game(data):
     gameid = data.get('gameid', None)
@@ -106,11 +121,11 @@ def join_game(data):
             emit('client_alert', 'That game is full.')
         else:
             game.add_player(identity, users[identity])
-            socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+            emit_lobby_update(gameid)
             # this bit is temporary
             if game.full:
                 game.start()
-                socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+                emit_lobby_update(gameid)
     else:
         emit('client_error', 'Bad game ID.')
 
@@ -155,9 +170,12 @@ def game_action(data):
     try:
       for channel, message_type, data in games[gameid].handle_action(conns[request.sid].identity, data['action']):
         socketio.emit(message_type, data, room=channel)
-      socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+      emit_lobby_update(gameid)
     except IllegalAction:
       emit('client_error', f'Illegal action data: {data}')
+
+def emit_lobby_update(gameid):
+    socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')

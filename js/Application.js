@@ -88,7 +88,7 @@ const reducer = (s, action) => {
     case 'open_game':
       return ({...s, game: {...getInitialGameState(), id: action.gameid, opened: true}})
     case 'close_game':
-      return ({...s, game: getInitialGameState()})
+      return ({...s, game: {...s.game, opened: false}})
     case 'set_shown_step':
       return ({...s, game: {...s.game, shownStep: action.shownStep}})
     case 'reset_shown_step':

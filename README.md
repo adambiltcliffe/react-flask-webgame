@@ -17,13 +17,6 @@ Avoid destroying/recreating the socket when logging in/out
 
 Handle token expirations in some sensible way?
 
-Allow server to provide better prompt text
-
-Make sure prompts etc. are disabled if the connection has gone away
-
-Don't drop out to a loading message and hang there if the connection drops
-
-
 Won't add in this (generic) version
 -----------------------------------
 

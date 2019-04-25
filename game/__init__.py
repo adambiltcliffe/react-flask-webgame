@@ -164,9 +164,22 @@ class ExampleCardGame(BaseGame):
         buttons_prompts = [[self.get_text_for_action(act), act] for act in self.model.get_actions(userid)]
         hand_card_prompts = {card: [] for card in self.model.hands[userid]}
         viewed_card_prompts = {card: [] for card in self.model.viewing or []}
+        text = 'Waiting ...'
+        verbs = set()
         for act in self.model.get_actions(userid):
+            verbs.add(act[0])
             if act[0] == 'play' or act[0] == 'discard_double':
                 hand_card_prompts[act[1]].append([self.get_text_for_action(act), act])
             if act[0] == 'pick':
                 viewed_card_prompts[act[1]].append([self.get_text_for_action(act), act])
-        return {'buttons': buttons_prompts, 'hand_card': hand_card_prompts, 'viewed_card': viewed_card_prompts}
+        if 'discard_double' in verbs and 'play' in verbs:
+            text = 'Play a card from your hand or discard a pair.'
+        elif 'play' in verbs:
+            text = 'Play a card from your hand.'
+        elif 'pick' in verbs:
+            text = 'Choose one of the revealed cards.'
+        elif 'restart' in verbs:
+            text = 'The round has ended.'
+        elif len(verbs) > 0:
+            text = 'Choose an action.'
+        return {'text': text, 'buttons': buttons_prompts, 'hand_card': hand_card_prompts, 'viewed_card': viewed_card_prompts}

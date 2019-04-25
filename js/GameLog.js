@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useHandler } from './handler'
 
 function GameLog(props) {
+  const handler = useHandler()
   const bottomElement = useRef()
   const [scrolledUp, setScrolledUp] = useState(false)
   const onScroll = useCallback((e) => {
@@ -10,7 +12,7 @@ function GameLog(props) {
   const entries = props.history.map((obj, ix) => {
     const cssClass = "game-history-entry" + ((ix == props.shownStep) ? "-shown" : "")
     const ref = (ix == props.history.length - 1) ? bottomElement : undefined
-    return <div className={cssClass} ref={ref} key={ix} onClick={() => {props.setShownStep(ix)}}>{obj.text}</div>
+    return <div className={cssClass} ref={ref} key={ix} onClick={() => {handler.setShownStep(ix)}}>{obj.text}</div>
   })
   return (<div onScroll={onScroll} className="game-history">
             Game log:

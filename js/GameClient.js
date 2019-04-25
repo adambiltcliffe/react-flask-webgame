@@ -24,7 +24,7 @@ function GameClient(props) {
   const currentGame = props.game.states[props.game.shownStep]
   const passedPrompts = (!props.isConnected) ? {text: 'Disconnected from server.'} :
                         (props.game.shownStep == props.game.states.length - 1) ? props.game.prompts :
-                        {history: props.resetShownStep, text: '(Viewing game history.)'}
+                        {history: true, text: '(Viewing game history.)'}
   switch(currentGame.game_type) {
     case 'example_card':
       renderer = <CardGameRenderer game={currentGame} userid={props.auth.userid} prompts={passedPrompts} dispatchAction={props.dispatchAction} />
@@ -34,7 +34,7 @@ function GameClient(props) {
   }
   return (<>
             {renderer}
-            <GameLog history={props.game.history} shownStep={props.game.shownStep} setShownStep={props.setShownStep}/>
+            <GameLog history={props.game.history} shownStep={props.game.shownStep}/>
           </>)
 }
 

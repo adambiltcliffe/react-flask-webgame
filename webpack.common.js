@@ -1,5 +1,6 @@
-var webpack = require('webpack');
-var HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack')
+const CleanWebpackPlugin = require('clean-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
 module.exports = {
   entry: [
     // "core-js/modules/es6.promise",
@@ -29,7 +30,6 @@ module.exports = {
       }
     ]
   },
-
   optimization: {
          runtimeChunk: 'single',
          splitChunks: {
@@ -42,18 +42,13 @@ module.exports = {
            }
          }
         },
-
   plugins: [
+    new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
       filename: 'app.html',
       hash: true,
       template: 'html/webpack_app_template.html'
     }),
     new webpack.HashedModuleIdsPlugin()
-  ],
-  mode: 'development',
-  watch: true,
-  watchOptions: {
-    ignored: /node_modules/
-  }
-};
+  ]
+}

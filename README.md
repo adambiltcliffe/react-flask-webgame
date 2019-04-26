@@ -10,8 +10,6 @@ Add some sort of game configuration step in the lobby instead of instantly start
 Refactoring, bugfixing etc.
 ---------------------------
 
-Make a RendererSelector component with lazy loading
-
 Avoid destroying/recreating the socket when logging in/out
 
 Handle token expirations in some sensible way?

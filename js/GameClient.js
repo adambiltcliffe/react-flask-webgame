@@ -1,8 +1,9 @@
 import './vendor/json_delta'
-import React, { useCallback, useEffect } from 'react'
-import CardGameRenderer from './examplecardgame/CardGameRenderer'
+import React, { Suspense, useEffect } from 'react'
 import DefaultRenderer from './DefaultRenderer'
 import GameLog from './GameLog';
+
+const CardGameRenderer = React.lazy(() => import('./examplecardgame/CardGameRenderer'))
 
 function GameClient(props) {
   useEffect(() => {
@@ -33,7 +34,9 @@ function GameClient(props) {
       renderer = <DefaultRenderer game={currentGame} userid={props.auth.userid} prompts={passedPrompts} dispatchAction={props.dispatchAction} />
   }
   return (<>
-            {renderer}
+            <Suspense fallback={<div>Loading client ...</div>}>
+              {renderer}
+            </Suspense>
             <GameLog history={props.game.history} shownStep={props.game.shownStep}/>
           </>)
 }

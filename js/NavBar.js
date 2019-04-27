@@ -1,8 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Link, Route, Switch } from 'react-router-dom';
-import JWT from 'jwt-client';
-
-JWT.defaults.tokenPrefix = ""
 
 function NavBar(props) {
   const nameElRef = useRef(null)
@@ -16,44 +13,13 @@ function NavBar(props) {
         body:JSON.stringify({name: nameElRef.current.value})
       })
       .then(response => response.json())
-      .then(json => {
-        const jwtValue = JWT.read(json.access_token)
-        if (JWT.validate(jwtValue))
-        {
-          JWT.keep(jwtValue)
-          props.setAuth({token: JWT.write(jwtValue),
-            userid: jwtValue.claim.identity,
-            nickname: jwtValue.claim.user_claims.nickname})
-        }
-        else {
-          JWT.forget()
-        }
-      })
+      .then(json => props.authToken.saveToken(json.access_token))
   }
 
   function handleLogout(event) {
     event.preventDefault()
-    JWT.forget()
-    props.setAuth({token: null,
-      userid: null,
-      nickname: null})
+    props.authToken.clearToken()
   }
-
-  useEffect(() => {
-    const jwtValue = JWT.remember()
-    if (JWT.validate(jwtValue))
-    {
-      props.setAuth({token: JWT.write(jwtValue),
-        userid: jwtValue.claim.identity,
-        nickname: jwtValue.claim.user_claims.nickname})
-    }
-    else {
-      JWT.forget()
-      props.setAuth({token: null,
-        userid: null,
-        nickname: null})
-    }
-  }, []) // only runs when component created
 
   const lobbyLink = (<Switch>
                         <Route exact path="/play/lobby" />
@@ -61,10 +27,10 @@ function NavBar(props) {
                       </Switch>)
   const connStr = 'Connected to server: ' + (props.isConnected ? 'Yes': 'No')
 
-  if (props.auth && props.auth.token) {
+  if (props.authToken.authInfo && props.authToken.authInfo.token) {
     return (<div className="navbar">
       This is the nav bar!
-      Logged in as {props.auth.nickname}.
+      Logged in as {props.authToken.authInfo.nickname}.
       <form onSubmit={handleLogout}>
         <button type="submit">Log out</button>
       </form>

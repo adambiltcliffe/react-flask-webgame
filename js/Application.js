@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import io from 'socket.io-client'
+import { useAuthToken } from './authtoken'
 import { handlerContext } from './handler'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
@@ -103,16 +104,15 @@ function Application (props) {
   const currentGameid = (matchedPath && matchedPath.params.gameid) || null
 
   const socket = useRef(null)
-  const [auth, setAuth] = useState(null)
+  const authToken = useAuthToken()
   const [state, dispatch] = useReducer(reducer, null, getInitialState)
   useEffect(() => {
-    if (!auth) {
+    if (!authToken.authInfo) {
       console.log('Doing nothing for now, auth info not loaded')
-      console.log(auth)
     }
     else {
       console.log("application effect creating socket")
-      socket.current = io({transports: ["websocket"], query: {token: auth.token}})
+      socket.current = io({transports: ["websocket"], query: {token: authToken.authInfo.token}})
       socket.current.on('connect', () => {
         dispatch({type: 'connect'})
       })
@@ -142,7 +142,7 @@ function Application (props) {
         socket.current.close()
       })
     }
-  }, [auth])
+  }, [authToken.authInfo])
 
   const openLobby = useCallback(() => {
     socket.current.emit('open_lobby')
@@ -200,16 +200,16 @@ function Application (props) {
 
   return  <>
             <handlerContext.Provider value={handler}>
-              <NavBar auth={auth} setAuth={setAuth} isConnected={state.connected} />
+              <NavBar authToken={authToken} isConnected={state.connected} />
               <Switch>
                 <Route exact path="/play/lobby">
-                  <LobbyClient auth={auth} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
+                  <LobbyClient auth={authToken.authInfo} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
                 </Route>
                 <Route path={gameRoutePath} render = {
                   ({ match }) =>
                     <GameClient
                       gameid={match.params.gameid}
-                      auth={auth}
+                      auth={authToken.authInfo}
                       game={state.game}
                       openGame={openGame}
                       closeGame={closeGame}

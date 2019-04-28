@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } 
 import io from 'socket.io-client'
 import { useAuthToken } from './authtoken'
 import { handlerContext } from './handler'
+import AlertBox from './AlertBox'
 import GameClient from './GameClient';
 import LobbyClient from './LobbyClient';
 import NavBar from './NavBar'
@@ -16,6 +17,7 @@ function nonDestructivePatch(oldStruc, patch) {
 const gameRoutePath = "/play/game/:gameid"
 
 const getInitialState = () => ({
+  alerts: [],
   connected: false,
   error: null,
   lobby: {
@@ -40,11 +42,17 @@ const reducer = (s, action) => {
   switch (action.type) {
     case 'connect':
       // erase all other state when we connect as we are probably not in sync with the server
-      return ({...getInitialState(), connected: true})
+      return ({...getInitialState(), alerts: s.alerts, connected: true})
     case 'disconnect':
       return ({...s, connected: false})
+    case 'client_alert':
+      return ({...s, alerts: s.alerts.concat([action.message])})
     case 'client_error':
       return ({...s, error: action.error})
+    case 'dismiss_alert':
+      const newAlerts = [...s.alerts]
+      newAlerts.splice(action.index, 1)
+      return ({...s, alerts: newAlerts})
     case 'games_list':
       return ({...s, lobby: {...s.lobby, loaded: true, games: action.gamelist}})
     case 'game_status':
@@ -122,7 +130,15 @@ function Application (props) {
       })
       socket.current.on('reconnecting', () => {
         // if token expired while disconnected, don't try to reconnect with it
-        socket.current.io.opts.query = {token: authToken.getTokenIfValid()}
+        const oldToken = socket.current.io.opts.query.token
+        const newToken = authToken.getTokenIfValid()
+        if (oldToken != newToken) {
+          socket.current.io.opts.query = {token: newToken}
+          dispatch('client_alert', 'You were logged out because your login expired.')
+        }
+      })
+      socket.current.on('client_alert', (message) => {
+        dispatch({type: 'client_alert', message})
       })
       socket.current.on('client_error', (error) => {
         dispatch({type: 'client_error', error})
@@ -138,9 +154,6 @@ function Application (props) {
       })
       socket.current.on('update_step', ({ gameid, index, step, prompts }) => {
         dispatch({type: 'update_step', gameid, index, step, prompts})
-      })
-      socket.current.on('client_alert', (message) => {
-        alert(message)
       })
       return (() => {
         console.log("master socket cleaning up...")
@@ -178,6 +191,10 @@ function Application (props) {
     dispatch({type: 'reset_shown_step'})
   }, [])
 
+  const dismissAlert = useCallback((index) => {
+    dispatch({type: 'dismiss_alert', index})
+  }, [])
+
   // handler functions which write straight to socket
   const createGame = useCallback((gametype) => {
     socket.current.emit('create_game', {gametype})
@@ -194,6 +211,7 @@ function Application (props) {
   const handler = useMemo(() => ({
     setShownStep,
     resetShownStep,
+    dismissAlert,
     createGame,
     joinGame,
     submitGameAction
@@ -205,6 +223,7 @@ function Application (props) {
 
   return  <>
             <handlerContext.Provider value={handler}>
+              <AlertBox alerts={state.alerts} />
               <NavBar authToken={authToken} isConnected={state.connected} />
               <Switch>
                 <Route exact path="/play/lobby">

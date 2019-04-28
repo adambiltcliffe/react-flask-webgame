@@ -126,6 +126,9 @@ def join_game(data):
             if game.full:
                 game.start()
                 emit_lobby_update(gameid)
+                for sid, conn in conns.items():
+                    if conn.identity in game.config.players:
+                        socketio.emit('client_alert', 'Your game has started.', room=sid)
     else:
         emit('client_error', 'Bad game ID.')
 

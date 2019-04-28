@@ -6,38 +6,56 @@ JWT.defaults.tokenPrefix = ""
 export const useAuthToken = () => {
   const [authInfo, setAuthInfo] = useState()
 
-  const validateAndSave = (jwtValue) => {
-    if (JWT.validate(jwtValue))
+  const validateAndSave = (rawToken) => {
+    if (rawToken && JWT.validate(rawToken))
     {
-      JWT.keep(jwtValue)
-      setAuthInfo({token: JWT.write(jwtValue),
+      JWT.keep(rawToken)
+      const jwtValue = JWT.read(rawToken)
+      setAuthInfo({token: rawToken,
         userid: jwtValue.claim.identity,
         nickname: jwtValue.claim.user_claims.nickname})
     }
     else {
-      JWT.forget()
       clearToken()
     }
   }
 
   const saveToken = useCallback((rawToken) => {
-    validateAndSave(JWT.read(rawToken))
+    validateAndSave(rawToken)
   })
 
   const clearToken = useCallback(() => {
     JWT.forget()
-    setAuthInfo({token: null,
-      userid: null,
-      nickname: null})
+    setAuthInfo(auth => {
+      if (auth && !auth.token) {
+        return auth
+      }
+      return {
+        token: null,
+        userid: null,
+        nickname: null
+      }})
   })
 
+  const getTokenIfValid = useCallback(() => {
+    const rawToken = JWT.get()
+    if (JWT.validate(rawToken)) {
+      return rawToken
+    }
+    else {
+      clearToken()
+      return null
+    }
+  }, [])
+
   useEffect(() => {
-    validateAndSave(JWT.remember())
+    validateAndSave(JWT.get())
   }, []) // only runs when component created
 
   return useMemo(() => ({
     authInfo,
     saveToken,
-    clearToken
+    clearToken,
+    getTokenIfValid
   }), [authInfo])
 }

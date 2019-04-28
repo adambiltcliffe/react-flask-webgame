@@ -12,7 +12,7 @@ Refactoring, bugfixing etc.
 
 Avoid destroying/recreating the socket when logging in/out
 
-Handle token expirations in some sensible way?
+Display an alert when login expires (while logged out)
 
 Display client_alert messages in a better way
 

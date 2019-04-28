@@ -112,12 +112,17 @@ function Application (props) {
     }
     else {
       console.log("application effect creating socket")
-      socket.current = io({transports: ["websocket"], query: {token: authToken.authInfo.token}})
+      console.log(authToken.authInfo)
+      socket.current = io({transports: ["websocket"], query: {token: authToken.getTokenIfValid()}})
       socket.current.on('connect', () => {
         dispatch({type: 'connect'})
       })
       socket.current.on('disconnect', () => {
         dispatch({type: 'disconnect'})
+      })
+      socket.current.on('reconnecting', () => {
+        // if token expired while disconnected, don't try to reconnect with it
+        socket.current.io.opts.query = {token: authToken.getTokenIfValid()}
       })
       socket.current.on('client_error', (error) => {
         dispatch({type: 'client_error', error})

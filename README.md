@@ -12,10 +12,6 @@ Refactoring, bugfixing etc.
 
 Avoid destroying/recreating the socket when logging in/out
 
-Display an alert when login expires (while logged out)
-
-Display client_alert messages in a better way
-
 
 Won't add in this (generic) version
 -----------------------------------

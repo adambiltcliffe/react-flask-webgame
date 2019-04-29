@@ -1,14 +1,14 @@
 import jsonobject as jo
 import random
 from collections import Counter
-from game.config import GameConfig
+from game.config import BaseConfig
 
 #pylint can't find the classes defined in jsonobject for some reason
 #pylint: disable=no-member
 
 class BaseModel(jo.JsonObject):
     # game.status can also be WAIT or READY but in those situations a model does not exist
-    config = jo.ObjectProperty(GameConfig)
+    config = jo.ObjectProperty(BaseConfig)
     result = jo.DefaultProperty(required=False, exclude_if_none=True)
     def __init__(self, config):
         super(BaseModel, self).__init__(config = config, result=None)
@@ -68,7 +68,7 @@ class TurnBasedModel(BaseModel):
 class SquareSubtractionModel(TurnBasedModel):
     number = jo.IntegerProperty()
     def setup(self):
-        self.number = 30
+        self.number = self.config.starting_number
         super(SquareSubtractionModel, self).setup()
     def get_actions_for_active_player(self):
         n = 1

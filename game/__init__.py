@@ -1,6 +1,6 @@
 import json_delta
 import random
-from game.config import GameConfig
+from game.config import BaseConfig, SquareSubtractionConfig, IllegalConfig
 from game.history import HistoryStep
 from game.model import BaseModel, SquareSubtractionModel, ExampleCardGameModel
 
@@ -22,12 +22,13 @@ class IllegalAction(Exception):
 class BaseGame:
     min_players = 2
     max_players = 2
+    config_class = BaseConfig
     model_class = BaseModel
     type_string = None
     def __init_subclass__(cls):
-        GameConfig.properties()['game_type'].choice_keys.append(cls.type_string)
-    def __init__(self, gameid):
-        self.temp_config = GameConfig(gameid=gameid, game_type=self.type_string)
+        BaseConfig.properties()['game_type'].choice_keys.append(cls.type_string)
+    def __init__(self, gameid, config_args):
+        self.temp_config = self.config_class(gameid=gameid, game_type=self.type_string, **config_args)
         self.model = None
         self.history = []
     @property
@@ -131,6 +132,7 @@ class SquareSubtractionGame(BaseGame):
     min_players = 2
     max_players = 2
     type_string = 'subtract_square'
+    config_class = SquareSubtractionConfig
     model_class = SquareSubtractionModel
     def get_lobby_info(self):
         result = super(SquareSubtractionGame, self).get_lobby_info()

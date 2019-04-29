@@ -10,6 +10,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from jwt import DecodeError
 
 from game import ExampleCardGame, SquareSubtractionGame, IllegalAction
+from game.config import IllegalConfig
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
@@ -19,9 +20,9 @@ jwt = JWTManager(app)
 users = {'test-albus': 'Albus Dumbledore', 'test-bungo': 'Mr Bungo', 'test-conan': 'Conan the Barbarian'}
 next_game_id = [1]
 games = {}
-def make_game(c, id1, id2=None):
+def make_game(c, id1, id2=None, config_args={}):
     gameid = str(next_game_id[0])
-    g = c(gameid)
+    g = c(gameid, config_args)
     g.add_player(id1, users[id1])
     if id2 is not None:
         g.add_player(id2, users[id2])
@@ -31,7 +32,7 @@ def make_game(c, id1, id2=None):
     return gameid
 make_game(ExampleCardGame, 'test-albus', 'test-bungo')
 make_game(ExampleCardGame, 'test-albus', 'test-conan')
-make_game(SquareSubtractionGame, 'test-conan', 'test-bungo')
+make_game(SquareSubtractionGame, 'test-conan', 'test-bungo', config_args={'starting_number': 35})
 make_game(ExampleCardGame, 'test-conan')
 
 class Conn(object):
@@ -104,7 +105,11 @@ def create_game(data):
             emit('client_alert', 'You must be logged in to create a game.')
         else:
             gclass = {'subtract_square': SquareSubtractionGame, 'example_card': ExampleCardGame}[gametype]
-            emit_lobby_update(make_game(gclass, identity))
+            config_args = data.get('config_args', {})
+            try:
+                emit_lobby_update(make_game(gclass, identity, config_args=config_args))
+            except IllegalConfig as e:
+                emit('client_alert', f"The game couldn't be created. {e}")
 
 @socketio.on('join_game')
 def join_game(data):

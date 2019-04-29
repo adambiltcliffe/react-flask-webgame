@@ -196,8 +196,8 @@ function Application (props) {
   }, [])
 
   // handler functions which write straight to socket
-  const createGame = useCallback((gametype) => {
-    socket.current.emit('create_game', {gametype})
+  const createGame = useCallback((gametype, config_args) => {
+    socket.current.emit('create_game', {gametype, config_args})
   })
 
   const joinGame = useCallback((gameid) => {

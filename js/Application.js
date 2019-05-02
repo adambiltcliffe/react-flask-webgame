@@ -121,9 +121,10 @@ function Application (props) {
     else {
       console.log("application effect creating socket")
       console.log(authToken.authInfo)
-      socket.current = io({transports: ["websocket"], query: {token: authToken.getTokenIfValid()}})
+      socket.current = io({transports: ["websocket"]})
       socket.current.on('connect', () => {
         dispatch({type: 'connect'})
+        socket.current.emit('token', authToken.getTokenIfValid())
       })
       socket.current.on('disconnect', () => {
         dispatch({type: 'disconnect'})

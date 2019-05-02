@@ -46,20 +46,26 @@ make_game(SquareSubtractionGame, users['test-conan'], users['test-bungo'], confi
 make_game(ExampleCardGame, users['test-conan'])
 
 class Conn(object):
-  def __init__(self, encoded_token):
-    if encoded_token is None or encoded_token == 'null':
-      self.token = None
-      self.identity = None
-    else:
-      self.token = decode_token(encoded_token)
-      self.identity = self.token['identity']
+    def __init__(self, encoded_token):
+        self.update_token(encoded_token)
+    def update_token(self, encoded_token):
+        if encoded_token is None or encoded_token == 'null':
+            self.last_token = None
+        else:
+            self.last_token = decode_token(encoded_token)
 conns = {}
 
 def check_user(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if request.sid in conns:
-            g.user = users[conns[request.sid].identity]
+            token = conns[request.sid].last_token
+            if token is None:
+                g.user = users[None] # anonymous user
+            elif token['identity'] not in users:
+                emit('client_error', 'Token identity not valid.')
+            else:
+                g.user = users[token['identity']]
             return f(*args, **kwargs)
         else:
             emit('client_error', 'Not authenticated.')
@@ -94,18 +100,24 @@ def test_login():
 def bundled_assets(filename):
   return send_from_directory('dist', filename)
 
-# /lobby namespace
 @socketio.on('connect')
 def connect_new_lobby_user():
-  conns[request.sid] = Conn(request.args.get("token"))
-  identity = conns[request.sid].identity
-  print(f"{identity} connected")
+    c = Conn(request.args.get("token"))
+    conns[request.sid] = c
+    print(f"{request.sid} connected, token is {conns[request.sid].last_token}")
+
+@socketio.on('token')
+def new_token(encoded_token):
+    c = conns[request.sid]
+    c.update_token(encoded_token)
+    print(f"{request.sid} sent new token, token is {conns[request.sid].last_token}")
 
 @socketio.on('disconnect')
 def disconnect_user():
-  identity = conns[request.sid].identity
   del conns[request.sid]
-  print(f"{identity} disconnected")
+  print(f"{request.sid} disconnected")
+
+# Now handlers for actually doing stuff
 
 @socketio.on('open_lobby')
 @check_user

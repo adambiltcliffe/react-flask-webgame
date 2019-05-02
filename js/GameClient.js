@@ -6,17 +6,6 @@ import GameLog from './GameLog';
 const CardGameRenderer = React.lazy(() => import('./examplecardgame/CardGameRenderer'))
 
 function GameClient(props) {
-  useEffect(() => {
-    if(props.isConnected) {
-      props.openGame()
-      return (() => {
-        props.closeGame()
-      })
-    }
-    else { return undefined } // we didn't actually open it
-  }, [props.isConnected])
-
-  // Now render
   if (!props.game || !props.game.loaded) {
     return <div>Loading game ...</div>
   }

@@ -15,6 +15,7 @@ function nonDestructivePatch(oldStruc, patch) {
 }
 
 const gameRoutePath = "/play/game/:gameid"
+const lobbyRoutePath = "/play/lobby"
 
 const getInitialState = () => ({
   alerts: [],
@@ -40,9 +41,12 @@ const getInitialGameState = () => ({
 const reducer = (s, action) => {
   console.log(JSON.stringify(action))
   switch (action.type) {
+    case 'reset':
+      // erase all other state when we connect or change identity
+      // as we are probably not in sync with the server
+      return ({...getInitialState(), alerts: s.alerts, connected: s.connected})
     case 'connect':
-      // erase all other state when we connect as we are probably not in sync with the server
-      return ({...getInitialState(), alerts: s.alerts, connected: true})
+      return ({...s, connected: true})
     case 'disconnect':
       return ({...s, connected: false})
     case 'client_alert':
@@ -110,31 +114,30 @@ const reducer = (s, action) => {
 function Application (props) {
   const matchedPath = matchPath(location.pathname, gameRoutePath)
   const currentGameid = (matchedPath && matchedPath.params.gameid) || null
+  const currentLobby = matchPath(location.pathname, lobbyRoutePath) || false
 
   const socket = useRef(null)
+  const sentToken = useRef(null)
   const authToken = useAuthToken()
   const [state, dispatch] = useReducer(reducer, null, getInitialState)
   useEffect(() => {
-    if (!authToken.authInfo) {
+    if (false) {
       console.log('Doing nothing for now, auth info not loaded')
     }
     else {
       console.log("application effect creating socket")
-      console.log(authToken.authInfo)
       socket.current = io({transports: ["websocket"]})
       socket.current.on('connect', () => {
         dispatch({type: 'connect'})
-        socket.current.emit('token', authToken.getTokenIfValid())
       })
       socket.current.on('disconnect', () => {
         dispatch({type: 'disconnect'})
       })
       socket.current.on('reconnecting', () => {
         // if token expired while disconnected, don't try to reconnect with it
-        const oldToken = socket.current.io.opts.query.token
         const newToken = authToken.getTokenIfValid()
-        if (oldToken != newToken) {
-          socket.current.io.opts.query = {token: newToken}
+        if (sentToken.current != newToken) {
+          sentToken.current = newToken
           dispatch('client_alert', 'You were logged out because your login expired.')
         }
       })
@@ -161,7 +164,7 @@ function Application (props) {
         socket.current.close()
       })
     }
-  }, [authToken.authInfo])
+  }, [authToken.getTokenIfValid])
 
   const openLobby = useCallback(() => {
     socket.current.emit('open_lobby')
@@ -182,6 +185,27 @@ function Application (props) {
     socket.current.emit('close_game', {gameid: currentGameid})
     dispatch({type: 'close_game', gameid: currentGameid})
   }, [currentGameid])
+
+  useEffect(() => {
+    if (state.connected)
+    {
+      console.log('resetting state')
+      dispatch({type: 'reset'})
+      const token = authToken.getTokenIfValid()
+      sentToken.current = token
+      socket.current.emit('token', token)
+      if (currentGameid) {
+        openGame()
+        return closeGame
+      } else if (currentLobby) {
+        openLobby()
+        return closeLobby
+      } else {
+        return undefined
+      }
+    }
+
+  }, [currentGameid, state.connected, authToken.authInfo])
 
   // handler functions to dispatch to reducer
   const setShownStep = useCallback((shownStep) => {
@@ -227,8 +251,8 @@ function Application (props) {
               <AlertBox alerts={state.alerts} />
               <NavBar authToken={authToken} isConnected={state.connected} />
               <Switch>
-                <Route exact path="/play/lobby">
-                  <LobbyClient auth={authToken.authInfo} lobby={state.lobby} openLobby={openLobby} closeLobby={closeLobby} isConnected={state.connected} />
+                <Route exact path={lobbyRoutePath}>
+                  <LobbyClient auth={authToken.authInfo} lobby={state.lobby} isConnected={state.connected} />
                 </Route>
                 <Route path={gameRoutePath} render = {
                   ({ match }) =>
@@ -236,8 +260,6 @@ function Application (props) {
                       gameid={match.params.gameid}
                       auth={authToken.authInfo}
                       game={state.game}
-                      openGame={openGame}
-                      closeGame={closeGame}
                       isConnected={state.connected} />
                 } />
                 <Route><Redirect to="/404" /></Route>

@@ -3,15 +3,6 @@ import GameLobbyTableRow from './GameLobbyTableRow'
 import CreateGameForm from './CreateGameForm'
 
 function LobbyClient(props) {
-  useEffect(() => {
-    if(props.isConnected) {
-      props.openLobby()
-      return (() => {
-        props.closeLobby()
-      })
-    }
-    else { return undefined } // we didn't actually open it
-  }, [props.isConnected])
   if (!props.lobby.loaded) {
     return (<div>Loading lobby ...</div>)
   }

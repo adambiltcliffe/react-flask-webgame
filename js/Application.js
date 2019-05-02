@@ -134,7 +134,7 @@ function Application (props) {
       const newToken = authToken.getTokenIfValid()
       if (sentToken.current != newToken) {
         sentToken.current = newToken
-        dispatch('client_alert', 'You were logged out because your login expired.')
+        dispatch({type: 'client_alert', message: 'You were logged out because your login expired.'})
       }
     })
     socket.current.on('client_alert', (message) => {

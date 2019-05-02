@@ -9,6 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from jwt import DecodeError
 
+from db.user import User
 from game import ExampleCardGame, SquareSubtractionGame, IllegalAction
 from game.config import IllegalConfig
 
@@ -17,23 +18,30 @@ app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
 socketio = SocketIO(app)
 jwt = JWTManager(app)
 
-users = {'test-albus': 'Albus Dumbledore', 'test-bungo': 'Mr Bungo', 'test-conan': 'Conan the Barbarian'}
+users = {}
+def make_user(userid, nickname):
+    u = User(userid, nickname)
+    users[userid] = u
+make_user('test-albus', 'Albus Dumbledore')
+make_user('test-bungo', 'Mr Bungo')
+make_user('test-conan', 'Conan the Barbarian')
+
 next_game_id = [1]
 games = {}
-def make_game(c, id1, id2=None, config_args={}):
+def make_game(c, user1, user2=None, config_args={}):
     gameid = str(next_game_id[0])
     g = c(gameid, config_args)
-    g.add_player(id1, users[id1])
-    if id2 is not None:
-        g.add_player(id2, users[id2])
+    g.add_player(user1.id, user1.nickname)
+    if user2 is not None:
+        g.add_player(user2.id, user2.nickname)
         g.start()
     games[gameid] = g
     next_game_id[0] += 1
     return gameid
-make_game(ExampleCardGame, 'test-albus', 'test-bungo')
-make_game(ExampleCardGame, 'test-albus', 'test-conan')
-make_game(SquareSubtractionGame, 'test-conan', 'test-bungo', config_args={'starting_number': 35})
-make_game(ExampleCardGame, 'test-conan')
+make_game(ExampleCardGame, users['test-albus'], users['test-bungo'])
+make_game(ExampleCardGame, users['test-albus'], users['test-conan'])
+make_game(SquareSubtractionGame, users['test-conan'], users['test-bungo'], config_args={'starting_number': 35})
+make_game(ExampleCardGame, users['test-conan'])
 
 class Conn(object):
   def __init__(self, encoded_token):
@@ -56,16 +64,17 @@ def game_app_page(**_):
 
 @app.route('/testlogin', methods=['POST'])
 def test_login():
-  if not request.is_json:
-    return jsonify({'msg': 'Missing JSON in request', 'err': True}), 400
-  name = request.json.get('name', None)
-  if not name:
-    return jsonify({'msg': 'No name provided', 'err': True}), 400
-  userid = f'test-{name}'
-  if not userid in users:
-    users[userid] = name # create user
-  token = create_access_token(identity=userid, user_claims={'nickname': users[userid]})
-  return jsonify(access_token=token), 200
+    if not request.is_json:
+        return jsonify({'msg': 'Missing JSON in request', 'err': True}), 400
+    name = request.json.get('name', None)
+    if not name:
+        return jsonify({'msg': 'No name provided', 'err': True}), 400
+    userid = f'test-{name}'
+    if not userid in users:
+        users[userid] = User(userid, name) # create user
+    user = users[userid]
+    token = create_access_token(identity=user.id, user_claims={'nickname': user.nickname})
+    return jsonify(access_token=token), 200
 
 @app.route('/bundled-assets/<filename>')
 def bundled_assets(filename):
@@ -125,7 +134,7 @@ def join_game(data):
         elif game.full:
             emit('client_alert', 'That game is full.')
         else:
-            game.add_player(identity, users[identity])
+            game.add_player(identity, users[identity].nickname)
             emit_lobby_update(gameid)
             # this bit is temporary
             if game.full:

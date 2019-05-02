@@ -7,12 +7,6 @@ Added functionality
 Add some sort of game configuration step in the lobby instead of instantly starting
 
 
-Refactoring, bugfixing etc.
----------------------------
-
-Avoid destroying/recreating the socket when logging in/out
-
-
 Won't add in this (generic) version
 -----------------------------------
 

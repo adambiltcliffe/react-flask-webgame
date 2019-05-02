@@ -121,70 +121,45 @@ function Application (props) {
   const authToken = useAuthToken()
   const [state, dispatch] = useReducer(reducer, null, getInitialState)
   useEffect(() => {
-    if (false) {
-      console.log('Doing nothing for now, auth info not loaded')
-    }
-    else {
-      console.log("application effect creating socket")
-      socket.current = io({transports: ["websocket"]})
-      socket.current.on('connect', () => {
-        dispatch({type: 'connect'})
-      })
-      socket.current.on('disconnect', () => {
-        dispatch({type: 'disconnect'})
-      })
-      socket.current.on('reconnecting', () => {
-        // if token expired while disconnected, don't try to reconnect with it
-        const newToken = authToken.getTokenIfValid()
-        if (sentToken.current != newToken) {
-          sentToken.current = newToken
-          dispatch('client_alert', 'You were logged out because your login expired.')
-        }
-      })
-      socket.current.on('client_alert', (message) => {
-        dispatch({type: 'client_alert', message})
-      })
-      socket.current.on('client_error', (error) => {
-        dispatch({type: 'client_error', error})
-      })
-      socket.current.on('games_list', ({ gamelist }) => {
-        dispatch({type: 'games_list', gamelist})
-      })
-      socket.current.on('game_status', ({ gameid, status }) => {
-        dispatch({type: 'game_status', gameid, status})
-      })
-      socket.current.on('update_full', ({ gameid, history, prompts }) => {
-        dispatch({type: 'update_full', gameid, history, prompts})
-      })
-      socket.current.on('update_step', ({ gameid, index, step, prompts }) => {
-        dispatch({type: 'update_step', gameid, index, step, prompts})
-      })
-      return (() => {
-        console.log("master socket cleaning up...")
-        socket.current.close()
-      })
-    }
+    console.log("application effect creating socket")
+    socket.current = io({transports: ["websocket"]})
+    socket.current.on('connect', () => {
+      dispatch({type: 'connect'})
+    })
+    socket.current.on('disconnect', () => {
+      dispatch({type: 'disconnect'})
+    })
+    socket.current.on('reconnecting', () => {
+      // if token expired while disconnected, don't try to reconnect with it
+      const newToken = authToken.getTokenIfValid()
+      if (sentToken.current != newToken) {
+        sentToken.current = newToken
+        dispatch('client_alert', 'You were logged out because your login expired.')
+      }
+    })
+    socket.current.on('client_alert', (message) => {
+      dispatch({type: 'client_alert', message})
+    })
+    socket.current.on('client_error', (error) => {
+      dispatch({type: 'client_error', error})
+    })
+    socket.current.on('games_list', ({ gamelist }) => {
+      dispatch({type: 'games_list', gamelist})
+    })
+    socket.current.on('game_status', ({ gameid, status }) => {
+      dispatch({type: 'game_status', gameid, status})
+    })
+    socket.current.on('update_full', ({ gameid, history, prompts }) => {
+      dispatch({type: 'update_full', gameid, history, prompts})
+    })
+    socket.current.on('update_step', ({ gameid, index, step, prompts }) => {
+      dispatch({type: 'update_step', gameid, index, step, prompts})
+    })
+    return (() => {
+      console.log("master socket cleaning up...")
+      socket.current.close()
+    })
   }, [authToken.getTokenIfValid])
-
-  const openLobby = useCallback(() => {
-    socket.current.emit('open_lobby')
-    dispatch({type: 'open_lobby'})
-  }, [])
-
-  const closeLobby = useCallback(() => {
-    socket.current.emit('close_lobby')
-    dispatch({type: 'close_lobby'})
-  }, [])
-
-  const openGame = useCallback(() => {
-    socket.current.emit('open_game', {gameid: currentGameid})
-    dispatch({type: 'open_game', gameid: currentGameid})
-  }, [currentGameid])
-
-  const closeGame = useCallback(() => {
-    socket.current.emit('close_game', {gameid: currentGameid})
-    dispatch({type: 'close_game', gameid: currentGameid})
-  }, [currentGameid])
 
   useEffect(() => {
     if (state.connected)
@@ -195,16 +170,22 @@ function Application (props) {
       sentToken.current = token
       socket.current.emit('token', token)
       if (currentGameid) {
-        openGame()
-        return closeGame
+        socket.current.emit('open_game', {gameid: currentGameid})
+        dispatch({type: 'open_game', gameid: currentGameid})
       } else if (currentLobby) {
-        openLobby()
-        return closeLobby
-      } else {
-        return undefined
+        socket.current.emit('open_lobby')
+        dispatch({type: 'open_lobby'})
       }
+      return (() => {
+        if (currentGameid) {
+          socket.current.emit('close_game', {gameid: currentGameid})
+          dispatch({type: 'close_game', gameid: currentGameid})
+        } else if (currentLobby) {
+          socket.current.emit('close_lobby')
+          dispatch({type: 'close_lobby'})
+        }
+      })
     }
-
   }, [currentGameid, state.connected, authToken.authInfo])
 
   // handler functions to dispatch to reducer

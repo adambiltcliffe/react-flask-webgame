@@ -7,8 +7,8 @@ from functools import wraps
 from flask import (Flask, g, jsonify, redirect, render_template,
                     request, send_from_directory)
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
-from flask_socketio import SocketIO, emit, join_room, leave_room
-from jwt import DecodeError
+from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
+from jwt import DecodeError, ExpiredSignatureError
 from werkzeug.local import LocalProxy
 
 from db.user import AnonymousUser, User
@@ -52,7 +52,14 @@ class Conn(object):
         if encoded_token is None or encoded_token == 'null':
             self.last_token = None
         else:
-            self.last_token = decode_token(encoded_token)
+            try:
+                self.last_token = decode_token(encoded_token)
+            except DecodeError:
+                emit('client_error', 'Could not decode access token.')
+                self.last_token = None
+            except ExpiredSignatureError:
+                emit('client_error', 'Access token has expired.')
+                self.last_token = None
 conns = {}
 
 def check_user(f):
@@ -111,6 +118,10 @@ def new_token(encoded_token):
     c = conns[request.sid]
     c.update_token(encoded_token)
     print(f"{request.sid} sent new token, token is {conns[request.sid].last_token}")
+    for room in rooms():
+        if room != request.sid:
+            print(f'Removing client from {room}')
+            leave_room(room)
 
 @socketio.on('disconnect')
 def disconnect_user():

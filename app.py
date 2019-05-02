@@ -2,14 +2,16 @@ import eventlet
 eventlet.monkey_patch()
 
 from collections import defaultdict
+from functools import wraps
 
-from flask import (Flask, jsonify, redirect, render_template, request,
-                   send_from_directory)
+from flask import (Flask, g, jsonify, redirect, render_template,
+                    request, send_from_directory)
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from jwt import DecodeError
+from werkzeug.local import LocalProxy
 
-from db.user import User
+from db.user import AnonymousUser, User
 from game import ExampleCardGame, SquareSubtractionGame, IllegalAction
 from game.config import IllegalConfig
 
@@ -18,7 +20,7 @@ app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
 socketio = SocketIO(app)
 jwt = JWTManager(app)
 
-users = {}
+users = {None: AnonymousUser()}
 def make_user(userid, nickname):
     u = User(userid, nickname)
     users[userid] = u
@@ -47,11 +49,23 @@ class Conn(object):
   def __init__(self, encoded_token):
     if encoded_token is None or encoded_token == 'null':
       self.token = None
-      self.identity = 'anonymous'
+      self.identity = None
     else:
       self.token = decode_token(encoded_token)
       self.identity = self.token['identity']
 conns = {}
+
+def check_user(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if request.sid in conns:
+            g.user = users[conns[request.sid].identity]
+            return f(*args, **kwargs)
+        else:
+            emit('client_error', 'Not authenticated.')
+    return wrapper
+
+user = LocalProxy(lambda: g.user)
 
 @app.route('/play')
 def default_play():
@@ -94,47 +108,49 @@ def disconnect_user():
   print(f"{identity} disconnected")
 
 @socketio.on('open_lobby')
+@check_user
 def send_lobby_state_add_to_room():
   gamelist = {gameid: games[gameid].get_lobby_info() for gameid in games}
   emit('games_list', {'gamelist': gamelist})
   join_room('lobby')
 
 @socketio.on('close_lobby')
+@check_user
 def close_lobby():
   leave_room('lobby')
 
 @socketio.on('create_game')
+@check_user
 def create_game(data):
     gametype = data.get('gametype')
     if gametype != 'subtract_square' and gametype != 'example_card':
         emit('client_error', 'Unknown game type.')
     else:
-        identity = conns[request.sid].identity
-        if identity == 'anonymous':
+        if user.is_anonymous:
             emit('client_alert', 'You must be logged in to create a game.')
         else:
             gclass = {'subtract_square': SquareSubtractionGame, 'example_card': ExampleCardGame}[gametype]
             config_args = data.get('config_args', {})
             try:
-                emit_lobby_update(make_game(gclass, identity, config_args=config_args))
+                emit_lobby_update(make_game(gclass, user.id, config_args=config_args))
             except IllegalConfig as e:
                 emit('client_alert', f"The game couldn't be created. {e}")
 
 @socketio.on('join_game')
+@check_user
 def join_game(data):
     gameid = data.get('gameid', None)
     print('open_game: ' + repr(gameid))
     if gameid is not None and gameid in games:
-        identity = conns[request.sid].identity
         game = games[gameid]
-        if identity in game.config.players:
+        if user.id in game.config.players:
             emit('client_alert', 'You have already joined that game.')
         elif game.status not in ('WAIT', 'READY'):
             emit('client_alert', 'That game has already started.')
         elif game.full:
             emit('client_alert', 'That game is full.')
         else:
-            game.add_player(identity, users[identity].nickname)
+            game.add_player(user.id, user.nickname)
             emit_lobby_update(gameid)
             # this bit is temporary
             if game.full:
@@ -147,6 +163,7 @@ def join_game(data):
         emit('client_error', 'Bad game ID.')
 
 @socketio.on('open_game')
+@check_user
 def send_game_state_add_to_room(data):
   gameid = data.get('gameid', None)
   print('open_game: ' + repr(gameid))
@@ -155,29 +172,28 @@ def send_game_state_add_to_room(data):
     if game.status in ('WAIT', 'READY'):
         emit('client_error', 'Game not started.')
     else:
-        identity = conns[request.sid].identity
-        channel = game.get_channel_for_user(identity)
+        channel = game.get_channel_for_user(user.id)
         join_room(channel)
-        emit('update_full', game.get_full_update(identity))
-        print(f"{identity} subscribed to game {gameid} ({channel})")
+        emit('update_full', game.get_full_update(user.id))
+        print(f"{user.id} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID.')
 
 @socketio.on('close_game')
+@check_user
 def close_game(data):
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
     game = games[gameid]
-    identity = conns[request.sid].identity
-    channel = game.get_channel_for_user(identity)
+    channel = game.get_channel_for_user(user.id)
     leave_room(channel)
   else:
     emit('client_error', 'Bad game ID.')
 
 @socketio.on('game_action')
+@check_user
 def game_action(data):
-  identity = conns[request.sid].identity
-  print(f"{identity} sent action data: {data}")
+  print(f"{user.id} sent action data: {data}")
   gameid = data.get('gameid', None)
   if gameid is None or gameid not in games:
     emit('client_error', 'Bad game ID.')
@@ -185,7 +201,7 @@ def game_action(data):
     emit('client_error', 'Missing action data.')
   else:
     try:
-      for channel, message_type, data in games[gameid].handle_action(conns[request.sid].identity, data['action']):
+      for channel, message_type, data in games[gameid].handle_action(user.id, data['action']):
         socketio.emit(message_type, data, room=channel)
       emit_lobby_update(gameid)
     except IllegalAction:

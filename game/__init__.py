@@ -1,6 +1,7 @@
 import json_delta
 import random
 from game.config import BaseConfig, SquareSubtractionConfig, IllegalConfig
+from game.config import ExampleCardGameConfig #pylint: disable=no-name-in-module
 from game.history import HistoryStep
 from game.model import BaseModel, SquareSubtractionModel, ExampleCardGameModel
 
@@ -42,11 +43,12 @@ class BaseGame:
             return 'WAIT' if len(self.config.players) < self.min_players else 'READY'
         return self.model.status
     def get_lobby_info(self):
-        return {'gameid': self.config.gameid,
-                'game_type': self.config.game_type,
-                'players': self.config.players.copy(),
-                'playernicks': self.config.playernicks.copy(),
-                'status': self.status}
+        result = {'gameid': self.config.gameid,
+                  'game_type': self.config.game_type,
+                  'players': self.config.players.copy(),
+                  'playernicks': self.config.playernicks.copy(),
+                  'status': self.status}
+        return result
     @property
     def full(self):
         return len(self.config.players) == self.max_players
@@ -57,6 +59,16 @@ class BaseGame:
             raise GameAlreadyStartedError()
         self.config.players.append(userid)
         self.config.playernicks[userid] = nick
+        self.config.player_opts[userid] = self.config.player_opts._wrapper.item_type()
+    def can_start(self):
+        print("checking if game can start")
+        print(self.config)
+        if len(self.config.players) < self.min_players:
+            return False
+        for userid in self.config.players:
+            if self.config.player_opts[userid].ready == False:
+                return False
+        return True
     def start(self):
         if len(self.config.players) < self.min_players:
             raise GameNotFullError()
@@ -97,6 +109,16 @@ class BaseGame:
         for userid in self.config.players:
             yield self.get_channel_for_user(userid)
         yield self.get_observer_channel()
+    def get_pregame_update(self, uid):
+        ready = {userid: self.config.player_opts[userid].ready for userid in self.config.players}
+        opts = self.config.player_opts[uid].to_json() if uid in self.config.players else None
+        return {'gameid': self.config.gameid,
+                'info': self.get_lobby_info(),
+                'ready': ready,
+                'opts': opts}
+    def get_pregame_updates(self):
+        for uid in self.config.players:
+            yield (self.get_channel_for_user(uid), 'update_pregame', self.get_pregame_update(uid))
     def get_full_update(self, uid):
         if uid not in self.config.players:
             return {'gameid': self.config.gameid,
@@ -144,6 +166,7 @@ class ExampleCardGame(BaseGame):
     min_players = 2
     max_players = 2
     type_string = 'example_card'
+    config_class = ExampleCardGameConfig
     model_class = ExampleCardGameModel
     def get_lobby_info(self):
         result = super(ExampleCardGame, self).get_lobby_info()

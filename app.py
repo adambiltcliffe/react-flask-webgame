@@ -39,7 +39,7 @@ def make_game(c, user1, user2=None, config_args={}):
         g.start()
     games[gameid] = g
     next_game_id[0] += 1
-    return gameid
+    return g
 make_game(ExampleCardGame, users['test-albus'], users['test-bungo'])
 make_game(ExampleCardGame, users['test-albus'], users['test-conan'])
 make_game(SquareSubtractionGame, users['test-conan'], users['test-bungo'], config_args={'starting_number': 35})
@@ -151,11 +151,15 @@ def create_game(data):
     else:
         if user.is_anonymous:
             emit('client_alert', 'You must be logged in to create a game.')
+        elif not user_can_join_game(user):
+            emit('client_alert', "You can't create a game while waiting for another game to start.")
         else:
             gclass = {'subtract_square': SquareSubtractionGame, 'example_card': ExampleCardGame}[gametype]
             config_args = data.get('config_args', {})
             try:
-                emit_lobby_update(make_game(gclass, user.id, config_args=config_args))
+                game = make_game(gclass, user, config_args=config_args)
+                emit_lobby_update(game.config.gameid)
+                notify_game_available(game)
             except IllegalConfig as e:
                 emit('client_alert', f"The game couldn't be created. {e}")
 
@@ -166,22 +170,21 @@ def join_game(data):
     print('open_game: ' + repr(gameid))
     if gameid is not None and gameid in games:
         game = games[gameid]
-        if user.id in game.config.players:
+        if user.is_anonymous:
+            emit('client_alert', 'You must be logged in to join a game.')
+        elif user.id in game.config.players:
             emit('client_alert', 'You have already joined that game.')
         elif game.status not in ('WAIT', 'READY'):
             emit('client_alert', 'That game has already started.')
         elif game.full:
             emit('client_alert', 'That game is full.')
+        elif not user_can_join_game(user):
+            emit('client_alert', "You can't join a game while waiting for another game to start.")
         else:
             game.add_player(user.id, user.nickname)
             emit_lobby_update(gameid)
-            # this bit is temporary
-            if game.full:
-                game.start()
-                emit_lobby_update(gameid)
-                for sid, conn in conns.items():
-                    if conn.identity in game.config.players:
-                        socketio.emit('client_alert', 'Your game has started.', room=sid)
+            emit_pregame_updates(gameid)
+            notify_game_available(game)
     else:
         emit('client_error', 'Bad game ID.')
 
@@ -192,13 +195,17 @@ def send_game_state_add_to_room(data):
   print('open_game: ' + repr(gameid))
   if gameid is not None and gameid in games:
     game = games[gameid]
-    if game.status in ('WAIT', 'READY'):
-        emit('client_error', 'Game not started.')
+    channel = game.get_channel_for_user(user.id)
+    if game.status == 'WAIT' or game.status == 'READY':
+        if user.id in game.config.players:
+            join_room(channel)
+            emit('update_pregame', game.get_pregame_update(user.id))
+        else:
+            emit('client_error', "Game not started.")
     else:
-        channel = game.get_channel_for_user(user.id)
         join_room(channel)
         emit('update_full', game.get_full_update(user.id))
-        print(f"{user.id} subscribed to game {gameid} ({channel})")
+    print(f"{user.id} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID.')
 
@@ -212,6 +219,22 @@ def close_game(data):
     leave_room(channel)
   else:
     emit('client_error', 'Bad game ID.')
+
+@socketio.on('ready')
+@check_user
+def ready(data):
+    print(f"{user.id} sent ready data: {data}")
+    gameid = data.get('gameid', None)
+    if gameid is None or gameid not in games:
+        emit('client_error', 'Bad game ID.')
+    elif 'opts' not in data:
+        emit('client_error', 'Missing action data.')
+    else:
+        stored_opts = games[gameid].config.player_opts[user.id]
+        for k in data['opts']:
+            stored_opts[k] = data['opts'][k]
+        emit_pregame_updates(gameid)
+        start_game_if_ready(games[gameid])
 
 @socketio.on('game_action')
 @check_user
@@ -230,8 +253,28 @@ def game_action(data):
     except IllegalAction:
       emit('client_error', f'Illegal action data: {data}')
 
+def user_can_join_game(user):
+    for g in games.values():
+        if user.id in g.config.players and (g.status == 'WAIT' or g.status == 'READY'):
+            return False
+    return True
+
+def notify_game_available(game):
+    emit('game_available', {'gameid': game.config.gameid})
+
 def emit_lobby_update(gameid):
     socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+
+def emit_pregame_updates(gameid):
+    for channel, message_type, data in games[gameid].get_pregame_updates():
+        socketio.emit(message_type, data, room=channel)
+
+def start_game_if_ready(game):
+    if game.can_start():
+        game.start()
+        emit_lobby_update(game.config.gameid)
+        for userid in game.config.players + [None]:
+            socketio.emit('update_full', game.get_full_update(user.id), room=game.get_channel_for_user(userid))
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')

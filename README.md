@@ -4,7 +4,8 @@ TO-DO LIST
 Added functionality
 -------------------
 
-Add some sort of game configuration step in the lobby instead of instantly starting
+Finish adding some sort of game configuration step in the lobby instead of instantly starting
+* Make initial player_opts actually do something
 
 
 Won't add in this (generic) version

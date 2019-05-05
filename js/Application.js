@@ -14,6 +14,7 @@ function nonDestructivePatch(oldStruc, patch) {
   return JSON_delta.patch(newStruc, patch)
 }
 
+const gameRoutePrefix = '/play/game/'
 const gameRoutePath = "/play/game/:gameid"
 const lobbyRoutePath = "/play/lobby"
 
@@ -24,18 +25,14 @@ const getInitialState = () => ({
   lobby: {
     opened: false,
     loaded: false,
-    games: []
+    games: {}
   },
   game: getInitialGameState()
 })
 const getInitialGameState = () => ({
   id: null,
   opened: false,
-  loaded: false,
-  history: [],
-  states: [],
-  prompts: [],
-  shownStep: 0
+  loaded: false
 })
 
 const reducer = (s, action) => {
@@ -61,6 +58,23 @@ const reducer = (s, action) => {
       return ({...s, lobby: {...s.lobby, loaded: true, games: action.gamelist}})
     case 'game_status':
       return ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [action.gameid]: action.status})})})
+    case 'update_pregame':
+      if (s.game.id != action.gameid) {
+        console.log('Ignoring an update for an unknown game')
+        return s
+      }
+      else {
+        console.log('pregame update')
+        return ({...s, game: {
+          id: action.gameid,
+          opened: true,
+          loaded: true,
+          started: false,
+          info: action.info,
+          ready: action.ready,
+          opts: action.opts
+        }})
+      }
     case 'update_full':
       if (s.game.id != action.gameid) {
         console.log('Ignoring an update for an unknown game')
@@ -78,6 +92,7 @@ const reducer = (s, action) => {
           id: action.gameid,
           opened: true,
           loaded: true,
+          started: true,
           history: action.history,
           prompts: action.prompts,
           states: computedStateArray,
@@ -92,7 +107,7 @@ const reducer = (s, action) => {
         let history = s.game.history.concat([action.step])
         let states = s.game.states.concat(nonDestructivePatch(s.game.states[action.index - 1], action.step.delta))
         let shownStep = (s.game.shownStep == s.game.history.length - 1) ? s.game.shownStep + 1 : s.game.shownStep
-        return ({...s, game: { id: action.gameid, opened: true, loaded: true, history, prompts: action.prompts, states, shownStep }})
+        return ({...s, game: { id: action.gameid, opened: true, loaded: true, started: true, history, prompts: action.prompts, states, shownStep }})
       }
     case 'open_lobby':
       return ({...s, lobby: {...s.lobby, opened: true}})
@@ -149,11 +164,19 @@ function Application (props) {
     socket.current.on('game_status', ({ gameid, status }) => {
       dispatch({type: 'game_status', gameid, status})
     })
+    socket.current.on('update_pregame', ({ gameid, info, ready, opts }) => {
+      dispatch({type: 'update_pregame', gameid, info, ready, opts})
+    })
     socket.current.on('update_full', ({ gameid, history, prompts }) => {
       dispatch({type: 'update_full', gameid, history, prompts})
     })
     socket.current.on('update_step', ({ gameid, index, step, prompts }) => {
       dispatch({type: 'update_step', gameid, index, step, prompts})
+    })
+    socket.current.on('game_available', ({ gameid }) => {
+      if (!currentGameid) {
+        props.history.push(gameRoutePrefix + gameid)
+      }
     })
     return (() => {
       console.log("master socket cleaning up...")
@@ -210,9 +233,19 @@ function Application (props) {
     socket.current.emit('join_game', {gameid})
   })
 
+  const submitReady = useCallback((opts) => {
+    console.log(opts)
+    socket.current.emit('ready', {gameid: currentGameid, opts})
+  })
+
   const submitGameAction = useCallback((action) => {
     socket.current.emit('game_action', {gameid: currentGameid, action})
   }, [currentGameid])
+
+  // handler functions to do miscelleneous other stuff
+  const goToLobby = useCallback(() => {
+    props.history.push(lobbyRoutePath)
+  }, [props.history])
 
   const handler = useMemo(() => ({
     setShownStep,
@@ -220,7 +253,9 @@ function Application (props) {
     dismissAlert,
     createGame,
     joinGame,
-    submitGameAction
+    submitReady,
+    submitGameAction,
+    goToLobby
   }))
 
   if (state.error) {

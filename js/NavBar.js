@@ -1,8 +1,10 @@
 import React, { useRef } from 'react';
 import { Link, Route, Switch } from 'react-router-dom';
+import { useHandler } from './handler'
 
 function NavBar(props) {
   const nameElRef = useRef(null)
+  const handler = useHandler()
 
   function handleLogin(event) {
     event.preventDefault()
@@ -19,6 +21,7 @@ function NavBar(props) {
   function handleLogout(event) {
     event.preventDefault()
     props.authToken.clearToken()
+    handler.goToLobby()
   }
 
   const lobbyLink = (<Switch>

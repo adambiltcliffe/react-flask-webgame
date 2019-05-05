@@ -4,9 +4,12 @@ import JoinGameButton from './JoinGameButton'
 
 function GameLobbyTableRow(props) {
   let link = null
-  if (props.state.status != 'WAIT' && props.state.status != 'READY') {
-    const verb = (props.state.players.includes(props.userid) && props.state.status != 'END') ? "Play!" : "View"
+  if (props.state.players.includes(props.userid)) {
+    const verb = (props.state.status != 'END') ? "Play!" : "View"
     link = <Link to={`/play/game/${props.gameid}`}>{verb}</Link>
+  }
+  else if (props.state.status != 'WAIT' && props.state.status != 'READY') {
+    link = <Link to={`/play/game/${props.gameid}`}>Watch</Link>
   }
   else if (props.state.status == 'WAIT' &&
       !props.state.players.includes(props.userid) &&

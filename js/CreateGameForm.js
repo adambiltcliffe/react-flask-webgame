@@ -2,7 +2,6 @@ import React, { useCallback, useRef, useState } from 'react'
 import { useHandler } from './handler'
 
 function CreateGameForm(props) {
-  const gameTypeRef = useRef(null)
   const numberRef = useRef(null)
   const handler = useHandler()
   const [gameType, setGameType] = useState('example_card')

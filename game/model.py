@@ -96,12 +96,16 @@ class ExampleCardGameModel(TurnBasedModel):
     def current_total(self):
         return sum(self.stack)
     def setup(self):
+        cards_to_deal = 4 if self.config.use_special_cards else 5
         cards = list(range(1,6)) * 5
         random.shuffle(cards)
         self.hands = {}
-        self.hands[self.config.players[0]] = cards[0:5]
-        self.hands[self.config.players[1]] = cards[5:10]
-        self.deck = cards[10:]
+        self.hands[self.config.players[0]] = cards[0:cards_to_deal]
+        self.hands[self.config.players[1]] = cards[cards_to_deal:cards_to_deal * 2]
+        self.deck = cards[cards_to_deal * 2:]
+        if self.config.use_special_cards:
+            for playerid in self.config.players:
+                self.hands[playerid].append(self.config.player_opts[playerid].special_card)
         self.stack = []
         self.viewing = None
         super(ExampleCardGameModel, self).setup()

@@ -274,7 +274,7 @@ def start_game_if_ready(game):
         game.start()
         emit_lobby_update(game.config.gameid)
         for userid in game.config.players + [None]:
-            socketio.emit('update_full', game.get_full_update(user.id), room=game.get_channel_for_user(userid))
+            socketio.emit('update_full', game.get_full_update(userid), room=game.get_channel_for_user(userid))
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')

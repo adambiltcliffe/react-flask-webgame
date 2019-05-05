@@ -174,6 +174,7 @@ function Application (props) {
       dispatch({type: 'update_step', gameid, index, step, prompts})
     })
     socket.current.on('game_available', ({ gameid }) => {
+      console.log(gameid, currentGameid)
       if (!currentGameid) {
         props.history.push(gameRoutePrefix + gameid)
       }

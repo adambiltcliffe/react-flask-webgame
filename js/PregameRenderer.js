@@ -8,7 +8,7 @@ const PregameRenderer = (props) => {
   const handler = useHandler()
   const [opts, setOpts] = useState(props.game.opts)
   const onReadyChanged = useCallback(() => { handler.submitReady({...opts, ready: readyRef.current.checked}) })
-  const playerList = props.game.info.players.map((p) => <li key={p}>{p}: {props.game.ready[p]?'':'not '}ready</li>)
+  const playerList = props.game.info.players.map((p) => <li key={p}>{props.game.info.playernicks[p]}: {props.game.ready[p]?'':'not '}ready</li>)
   let optsChooser = null
   const disabled = readyRef.current && readyRef.current.checked
   switch (props.game.info.game_type) {
@@ -27,7 +27,7 @@ const PregameRenderer = (props) => {
           <Suspense fallback={<div>Loading options ...</div>}>
             {optsChooser}
           </Suspense>
-          <p>Ready? <input type="checkbox" ref={readyRef} onChange={onReadyChanged} /></p>
+          <p>Ready? <input type="checkbox" defaultChecked={props.game.opts.ready} ref={readyRef} onChange={onReadyChanged} /></p>
          </>
 }
 

@@ -1,7 +1,7 @@
 import './vendor/json_delta'
-import React, { Suspense, useEffect } from 'react'
+import React, { Suspense } from 'react'
 import DefaultRenderer from './DefaultRenderer'
-import DefaultPregameRenderer from './DefaultPregameRenderer'
+import PregameRenderer from './PregameRenderer'
 import GameLog from './GameLog';
 
 const CardGameRenderer = React.lazy(() => import('./examplecardgame/CardGameRenderer'))
@@ -12,7 +12,7 @@ function GameClient(props) {
   }
 
   if (!props.game.started) {
-    return <DefaultPregameRenderer game={props.game} userid={props.auth.userid} />
+    return <PregameRenderer game={props.game} userid={props.auth.userid} />
   }
 
   let renderer;

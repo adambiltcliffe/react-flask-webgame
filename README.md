@@ -5,7 +5,7 @@ Added functionality
 -------------------
 
 Finish adding some sort of game configuration step in the lobby instead of instantly starting
-* Make initial player_opts actually do something
+* Check why creating a game doesn't always take you to it
 
 Maybe figure out what to do when tokens expire?
 

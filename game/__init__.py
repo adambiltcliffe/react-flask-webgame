@@ -109,9 +109,11 @@ class BaseGame:
         for userid in self.config.players:
             yield self.get_channel_for_user(userid)
         yield self.get_observer_channel()
+    def get_available_opts(self, uid):
+        return self.config.player_opts[uid].to_json() if uid in self.config.players else None
     def get_pregame_update(self, uid):
         ready = {userid: self.config.player_opts[userid].ready for userid in self.config.players}
-        opts = self.config.player_opts[uid].to_json() if uid in self.config.players else None
+        opts = self.get_available_opts(uid)
         return {'gameid': self.config.gameid,
                 'info': self.get_lobby_info(),
                 'ready': ready,
@@ -173,6 +175,13 @@ class ExampleCardGame(BaseGame):
         if self.model is not None:
             result['turn'] = self.model.active_userid
         return result
+    def get_available_opts(self, uid):
+        if uid not in self.config.players:
+            return None
+        opts = self.config.player_opts[uid].to_json()
+        if not self.config.use_special_cards:
+            del opts['special_card']
+        return opts
     @staticmethod
     def get_text_for_action(action):
         if action[0] == 'play':

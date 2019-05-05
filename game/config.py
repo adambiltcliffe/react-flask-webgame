@@ -32,4 +32,5 @@ class ExampleCardGamePlayerOpts(BasePlayerOpts):
     special_card = jo.IntegerProperty(default=0, choices=[0,6])
 
 class ExampleCardGameConfig(BaseConfig):
+    use_special_cards = jo.BooleanProperty(default=False)
     player_opts = jo.DictProperty(jo.ObjectProperty(ExampleCardGamePlayerOpts))

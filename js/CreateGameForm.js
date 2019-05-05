@@ -3,6 +3,7 @@ import { useHandler } from './handler'
 
 function CreateGameForm(props) {
   const numberRef = useRef(null)
+  const useSpecialRef = useRef(false)
   const handler = useHandler()
   const [gameType, setGameType] = useState('example_card')
 
@@ -15,6 +16,8 @@ function CreateGameForm(props) {
     const conf = {}
     if (gameType == 'subtract_square') {
       conf.starting_number = parseInt(numberRef.current.value) || 0
+    } else if (gameType == 'example_card') {
+      conf.use_special_cards = useSpecialRef.current.checked
     }
     handler.createGame(gameType, conf)
   })
@@ -25,6 +28,10 @@ function CreateGameForm(props) {
             <option value="example_card">Example card game</option>
           </select>
           {gameType == 'subtract_square' && <input type="text" name="sn" defaultValue="25" ref={numberRef} />}
+          {gameType == 'example_card' && <>
+                                            Use special cards?
+                                            <input type="checkbox" name="usespecial" ref={useSpecialRef} />
+                                         </>}
           <button type="submit">New game</button>
       </form>
 }

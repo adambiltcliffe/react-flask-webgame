@@ -36,7 +36,6 @@ const getInitialGameState = () => ({
 })
 
 const reducer = (s, action) => {
-  console.log(JSON.stringify(action))
   switch (action.type) {
     case 'reset':
       // erase all other state when we connect or change identity
@@ -65,11 +64,9 @@ const reducer = (s, action) => {
       }
     case 'update_pregame':
       if (s.game.id != action.gameid) {
-        console.log('Ignoring an update for an unknown game')
         return s
       }
       else {
-        console.log('pregame update')
         return ({...s, game: {
           id: action.gameid,
           opened: true,
@@ -82,11 +79,9 @@ const reducer = (s, action) => {
       }
     case 'update_full':
       if (s.game.id != action.gameid) {
-        console.log('Ignoring an update for an unknown game')
         return s
       }
       else {
-        console.log('processing update')
         let computedState = {}
         let computedStateArray = []
         action.history.map((step) => {
@@ -141,7 +136,6 @@ function Application (props) {
   const authToken = useAuthToken()
   const [state, dispatch] = useReducer(reducer, null, getInitialState)
   useEffect(() => {
-    console.log("application effect creating socket")
     socket.current = io({transports: ["websocket"]})
     socket.current.on('connect', () => {
       dispatch({type: 'connect'})
@@ -179,13 +173,11 @@ function Application (props) {
       dispatch({type: 'update_step', gameid, index, step, prompts})
     })
     socket.current.on('game_available', ({ gameid }) => {
-      console.log(gameid, currentGameid)
       if (!currentGameid) {
         props.history.push(gameRoutePrefix + gameid)
       }
     })
     return (() => {
-      console.log("master socket cleaning up...")
       socket.current.close()
     })
   }, [authToken.getTokenIfValid])
@@ -193,7 +185,6 @@ function Application (props) {
   useEffect(() => {
     if (state.connected)
     {
-      console.log('resetting state')
       dispatch({type: 'reset'})
       const token = authToken.getTokenIfValid()
       sentToken.current = token
@@ -244,7 +235,6 @@ function Application (props) {
   })
 
   const submitReady = useCallback((opts) => {
-    console.log(opts)
     socket.current.emit('ready', {gameid: currentGameid, opts})
   })
 

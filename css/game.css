@@ -21,6 +21,8 @@ html * {max-height:1000000px;}
     border: 1px solid black;
     background-color: white;
     padding: 5px;
+    cursor: pointer;
+    user-select: none;
 }
 
 .game-history-entry-shown {

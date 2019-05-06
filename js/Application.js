@@ -57,7 +57,12 @@ const reducer = (s, action) => {
     case 'games_list':
       return ({...s, lobby: {...s.lobby, loaded: true, games: action.gamelist}})
     case 'game_status':
-      return ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [action.gameid]: action.status})})})
+      if (action.status) {
+        return ({...s, lobby: ({...s.lobby, games: ({...s.lobby.games, [action.gameid]: action.status})})})
+      } else {
+        const {[action.gameid]: nothing, ...newGames} = s.lobby.games
+        return ({...s, lobby: newGames})
+      }
     case 'update_pregame':
       if (s.game.id != action.gameid) {
         console.log('Ignoring an update for an unknown game')
@@ -234,6 +239,10 @@ function Application (props) {
     socket.current.emit('join_game', {gameid})
   })
 
+  const leaveGame = useCallback(() => {
+    socket.current.emit('leave_game', {gameid: currentGameid})
+  })
+
   const submitReady = useCallback((opts) => {
     console.log(opts)
     socket.current.emit('ready', {gameid: currentGameid, opts})
@@ -254,6 +263,7 @@ function Application (props) {
     dismissAlert,
     createGame,
     joinGame,
+    leaveGame,
     submitReady,
     submitGameAction,
     goToLobby

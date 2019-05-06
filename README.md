@@ -4,8 +4,6 @@ TO-DO LIST
 Added functionality
 -------------------
 
-Maybe figure out what to do when tokens expire?
-
 Clean up all the debug output
 
 

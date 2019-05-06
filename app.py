@@ -186,7 +186,31 @@ def join_game(data):
             emit_pregame_updates(gameid)
             notify_game_available(game)
     else:
-        emit('client_error', 'Bad game ID.')
+        emit('client_error', 'Bad game ID when joining game.')
+
+@socketio.on('leave_game')
+@check_user
+def leave_game(data):
+    gameid = data.get('gameid', None)
+    print('leave_game: ' + repr(gameid))
+    if gameid is not None and gameid in games:
+        game = games[gameid]
+        if user.id not in game.config.players:
+            emit('client_alert', 'You have not joined that game.')
+        elif game.status not in ('WAIT', 'READY'):
+            emit('client_alert', 'That game has already started.')
+        else:
+            game.remove_player(user.id)
+            channel = game.get_channel_for_user(user.id)
+            leave_room(channel)
+            emit_lobby_update(gameid)
+            if game.config.players:
+                emit_pregame_updates(gameid)
+                start_game_if_ready(games[gameid])
+            else:
+                del games[gameid]
+    else:
+        emit('client_error', 'Bad game ID when leaving game.')
 
 @socketio.on('open_game')
 @check_user
@@ -207,7 +231,7 @@ def send_game_state_add_to_room(data):
         emit('update_full', game.get_full_update(user.id))
     print(f"{user.id} subscribed to game {gameid} ({channel})")
   else:
-    emit('client_error', 'Bad game ID.')
+    emit('client_error', 'Bad game ID when opening game.')
 
 @socketio.on('close_game')
 @check_user
@@ -217,8 +241,7 @@ def close_game(data):
     game = games[gameid]
     channel = game.get_channel_for_user(user.id)
     leave_room(channel)
-  else:
-    emit('client_error', 'Bad game ID.')
+    # We don't give an error if the gameid is bad since maybe the game was just deleted
 
 @socketio.on('ready')
 @check_user
@@ -226,7 +249,7 @@ def ready(data):
     print(f"{user.id} sent ready data: {data}")
     gameid = data.get('gameid', None)
     if gameid is None or gameid not in games:
-        emit('client_error', 'Bad game ID.')
+        emit('client_error', 'Bad game ID when submitting pregame data.')
     elif 'opts' not in data:
         emit('client_error', 'Missing action data.')
     else:
@@ -242,7 +265,7 @@ def game_action(data):
   print(f"{user.id} sent action data: {data}")
   gameid = data.get('gameid', None)
   if gameid is None or gameid not in games:
-    emit('client_error', 'Bad game ID.')
+    emit('client_error', 'Bad game ID when submitting action.')
   elif 'action' not in data:
     emit('client_error', 'Missing action data.')
   else:
@@ -263,7 +286,10 @@ def notify_game_available(game):
     emit('game_available', {'gameid': game.config.gameid})
 
 def emit_lobby_update(gameid):
-    socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+    if games[gameid].config.players:
+        socketio.emit('game_status', {'gameid': gameid, 'status': games[gameid].get_lobby_info()}, room='lobby')
+    else:
+        socketio.emit('game_status', {'gameid': gameid, 'status': None}, room='lobby')
 
 def emit_pregame_updates(gameid):
     for channel, message_type, data in games[gameid].get_pregame_updates():

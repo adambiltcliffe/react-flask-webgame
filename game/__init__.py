@@ -17,6 +17,9 @@ class GameAlreadyStartedError(Exception):
 class GameNotStartedError(Exception):
     pass
 
+class GameNotJoinedError(Exception):
+    pass
+
 class IllegalAction(Exception):
     pass
 
@@ -60,6 +63,14 @@ class BaseGame:
         self.config.players.append(userid)
         self.config.playernicks[userid] = nick
         self.config.player_opts[userid] = self.config.player_opts._wrapper.item_type()
+    def remove_player(self, userid):
+        if userid not in self.config.players:
+            raise GameNotJoinedError()
+        if self.model is not None:
+            raise GameAlreadyStartedError()
+        self.config.players.remove(userid)
+        del self.config.playernicks[userid]
+        del self.config.player_opts[userid]
     def can_start(self):
         print("checking if game can start")
         print(self.config)

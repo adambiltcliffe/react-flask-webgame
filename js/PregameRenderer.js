@@ -1,5 +1,6 @@
 import React, { Suspense, useCallback, useRef, useState } from 'react'
 import { useHandler } from './handler'
+import LeaveGameButton from './LeaveGameButton'
 
 const CardGamePlayerOptions = React.lazy(() => import('./examplecardgame/CardGamePlayerOptions'))
 
@@ -28,6 +29,7 @@ const PregameRenderer = (props) => {
             {optsChooser}
           </Suspense>
           <p>Ready? <input type="checkbox" defaultChecked={props.game.opts.ready} ref={readyRef} onChange={onReadyChanged} /></p>
+          <LeaveGameButton />
          </>
 }
 

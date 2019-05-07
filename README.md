@@ -1,15 +1,13 @@
-TO-DO LIST
-==========
-
-Added functionality
--------------------
-
-Clean up all the debug output
+Most things are working
 
 
-Won't add in this (generic) version
------------------------------------
+Future development
+------------------
+
+Add another, more interesting game
 
 Persist user and game information to a database
 
 Make it possible to login with Google or Discord or whatever
+
+Write tests

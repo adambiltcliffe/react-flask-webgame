@@ -55,22 +55,28 @@ class BaseGame:
     @property
     def full(self):
         return len(self.config.players) == self.max_players
-    def add_player(self, userid, nick):
+    def add_player(self, user):
         if self.full:
             raise GameFullError()
         if self.model is not None:
             raise GameAlreadyStartedError()
-        self.config.players.append(userid)
-        self.config.playernicks[userid] = nick
-        self.config.player_opts[userid] = self.config.player_opts._wrapper.item_type()
-    def remove_player(self, userid):
-        if userid not in self.config.players:
+        useridstr = str(user.id)
+        self.config.players.append(useridstr)
+        self.config.playernicks[useridstr] = user.nickname
+        self.config.player_opts[useridstr] = self.config.player_opts._wrapper.item_type()
+    def has_player(self, user):
+        return str(user.id) in self.config.players
+    def remove_player(self, user):
+        if not self.has_player(user):
             raise GameNotJoinedError()
         if self.model is not None:
             raise GameAlreadyStartedError()
-        self.config.players.remove(userid)
-        del self.config.playernicks[userid]
-        del self.config.player_opts[userid]
+        useridstr = str(user.id)
+        self.config.players.remove(useridstr)
+        del self.config.playernicks[useridstr]
+        del self.config.player_opts[useridstr]
+    def get_player_opts(self, user):
+        return self.config.player_opts[str(user.id)]
     def can_start(self):
         print("checking if game can start")
         print(self.config)
@@ -91,7 +97,9 @@ class BaseGame:
         self.current_step_log.append(message)
     def get_public_view(self):
         return {**self.get_lobby_info(), **self.model.get_public_view()}
-    def get_player_view(self, userid):
+    def get_player_view(self, user):
+        return self.get_player_view_by_id(str(user.id))
+    def get_player_view_by_id(self, userid):
         return {**self.get_lobby_info(), **self.model.get_player_view(userid)}
     def update_history(self):
         if len(self.history) == 0:
@@ -103,65 +111,70 @@ class BaseGame:
         step.public_view = pv
         step.public_view_delta = json_delta.diff(last_step_json['public_view'], pv, verbose=False)
         for uid in self.config.players:
-            spv = self.get_player_view(uid)
+            spv = self.get_player_view_by_id(uid)
             step.player_views[uid] = spv
             step.player_view_deltas[uid] = json_delta.diff(last_step_json['player_views'][uid], spv, verbose=False)
         self.history.append(step)
         self.current_step_log = []
     def get_observer_channel(self):
         return f'{self.config.gameid}-observers'
-    def get_channel_for_user(self, userid):
-        print(userid, self.config.players)
-        if userid in self.config.players:
-            return f'{self.config.gameid}-player-{userid}'
+    def get_channel_for_user(self, user):
+        return self.get_channel_for_user_by_id(str(user.id))
+    def get_channel_for_user_by_id(self, useridstr):
+        if useridstr in self.config.players:
+            return f'{self.config.gameid}-player-{useridstr}'
         else:
             return self.get_observer_channel()
-    def get_all_channels(self):
-        for userid in self.config.players:
-            yield self.get_channel_for_user(userid)
-        yield self.get_observer_channel()
-    def get_available_opts(self, uid):
+    def get_available_opts_by_id(self, uid):
         return self.config.player_opts[uid].to_json() if uid in self.config.players else None
-    def get_pregame_update(self, uid):
+    def get_pregame_update(self, user):
+        return self.get_pregame_update_by_id(str(user.id))
+    def get_pregame_update_by_id(self, uid):
         ready = {userid: self.config.player_opts[userid].ready for userid in self.config.players}
-        opts = self.get_available_opts(uid)
+        opts = self.get_available_opts_by_id(uid)
         return {'gameid': self.config.gameid,
                 'info': self.get_lobby_info(),
                 'ready': ready,
                 'opts': opts}
     def get_pregame_updates(self):
         for uid in self.config.players:
-            yield (self.get_channel_for_user(uid), 'update_pregame', self.get_pregame_update(uid))
-    def get_full_update(self, uid):
+            yield (self.get_channel_for_user_by_id(uid), 'update_pregame', self.get_pregame_update_by_id(uid))
+    def get_full_update(self, user):
+        return self.get_full_update_by_id(str(user.id))
+    def get_full_update_by_id(self, uid):
         if uid not in self.config.players:
             return {'gameid': self.config.gameid,
                     'history': [{'text': h.log_message, 'delta': h.public_view_delta} for h in self.history],
                     'prompts': {}}
         return {'gameid': self.config.gameid,
                 'history': [{'text': h.log_message, 'delta': h.player_view_deltas[uid]} for h in self.history],
-                'prompts': self.get_current_prompts(uid)}
-    def get_step_update(self, uid):
+                'prompts': self.get_current_prompts_by_id(uid)}
+    def get_full_updates(self):
+        for uid in self.config.players:
+            yield(self.get_channel_for_user_by_id(uid), 'update_full', self.get_full_update_by_id(uid))
+    def get_step_update_by_id(self, uid):
         if uid not in self.config.players:
             delta = self.history[-1].public_view_delta
             prompts = {}
         else:
             delta = self.history[-1].player_view_deltas[uid]
-            prompts = self.get_current_prompts(uid)
+            prompts = self.get_current_prompts_by_id(uid)
         idx = len(self.history) - 1
         return {'gameid': self.config.gameid,
                 'index': idx,
                 'step': {'text': self.history[-1].log_message, 'delta': delta},
                 'prompts': prompts}
-    def get_current_prompts(self, userid):
+    def get_current_prompts_by_id(self, userid):
         return {'buttons': [[act, act] for act in self.model.get_actions(userid)]}
-    def handle_action(self, userid, action):
-        if not self.model.is_legal_action(userid, action):
+    def handle_action(self, user, action):
+        useridstr = str(user.id)
+        if not self.model.is_legal_action(useridstr, action):
             raise IllegalAction()
-        self.model.apply_action(userid, action, self.log)
+        self.model.apply_action(useridstr, action, self.log)
         self.update_history()
-        yield (self.get_observer_channel(), 'update_step', self.get_step_update(None))
+        yield (self.get_observer_channel(), 'update_step', self.get_step_update_by_id(None))
         for uid in self.config.players:
-            yield (self.get_channel_for_user(uid), 'update_step', self.get_step_update(uid))
+            yield (self.get_channel_for_user_by_id(uid), 'update_step', self.get_step_update_by_id(uid))
 
 class SquareSubtractionGame(BaseGame):
     min_players = 2
@@ -205,7 +218,7 @@ class ExampleCardGame(BaseGame):
             return 'Restart the game'
         else:
             return '???'
-    def get_current_prompts(self, userid):
+    def get_current_prompts_by_id(self, userid):
         buttons_prompts = [[self.get_text_for_action(act), act] for act in self.model.get_actions(userid)]
         hand_card_prompts = {card: [] for card in self.model.hands[userid]}
         viewed_card_prompts = {card: [] for card in self.model.viewing or []}

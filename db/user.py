@@ -1,10 +1,9 @@
-class User(object):
-    is_anonymous = False
-    def __init__(self, userid, nickname):
-        self.id = userid
-        self.nickname = nickname
+import mongoengine as me
 
-class AnonymousUser(User):
-    is_anonymous = True
-    def __init__(self):
-        super(AnonymousUser, self).__init__(None, 'Guest')
+class User(me.Document):
+    is_anonymous = me.BooleanField(db_field='anon', default=False)
+    nickname = me.StringField(required=True)
+    test_login = me.StringField(required=False)
+
+def get_guest():
+    return User.objects(is_anonymous=True).upsert_one(set__nickname='Guest')

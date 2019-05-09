@@ -4,14 +4,16 @@ eventlet.monkey_patch()
 from collections import defaultdict
 from functools import wraps
 
+from bson.objectid import ObjectId
 from flask import (Flask, g, jsonify, redirect, render_template,
                     request, send_from_directory)
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 from jwt import DecodeError, ExpiredSignatureError
+from mongoengine import DoesNotExist, connect
 from werkzeug.local import LocalProxy
 
-from db.user import AnonymousUser, User
+from db.user import User, get_guest
 from game import ExampleCardGame, SquareSubtractionGame, IllegalAction
 from game.config import IllegalConfig
 
@@ -20,30 +22,32 @@ app.config['JWT_SECRET_KEY'] = 'this should also be in a config file'
 socketio = SocketIO(app)
 jwt = JWTManager(app)
 
-users = {None: AnonymousUser()}
-def make_user(userid, nickname):
-    u = User(userid, nickname)
-    users[userid] = u
-make_user('test-albus', 'Albus Dumbledore')
-make_user('test-bungo', 'Mr Bungo')
-make_user('test-conan', 'Conan the Barbarian')
+connect('webgame', host='127.0.0.1', port=27017)
+
+def make_user(login, nickname):
+    u = User.objects(test_login=login).upsert_one(set__nickname=nickname)
+    u.save()
+    return u
+albus = make_user('test-albus', 'Albus Dumbledore')
+bungo = make_user('test-bungo', 'Mr Bungo')
+conan = make_user('test-conan', 'Conan the Barbarian')
 
 next_game_id = [1]
 games = {}
 def make_game(c, user1, user2=None, config_args={}):
     gameid = str(next_game_id[0])
     g = c(gameid, config_args)
-    g.add_player(user1.id, user1.nickname)
+    g.add_player(user1)
     if user2 is not None:
-        g.add_player(user2.id, user2.nickname)
+        g.add_player(user2)
         g.start()
     games[gameid] = g
     next_game_id[0] += 1
     return g
-make_game(ExampleCardGame, users['test-albus'], users['test-bungo'])
-make_game(ExampleCardGame, users['test-albus'], users['test-conan'])
-make_game(SquareSubtractionGame, users['test-conan'], users['test-bungo'], config_args={'starting_number': 35})
-make_game(ExampleCardGame, users['test-conan'])
+make_game(ExampleCardGame, albus, bungo)
+make_game(ExampleCardGame, albus, conan)
+make_game(SquareSubtractionGame, conan, bungo, config_args={'starting_number': 35})
+make_game(ExampleCardGame, conan)
 
 class Conn(object):
     def __init__(self, encoded_token):
@@ -68,11 +72,12 @@ def check_user(f):
         if request.sid in conns:
             token = conns[request.sid].last_token
             if token is None:
-                g.user = users[None] # anonymous user
-            elif token['identity'] not in users:
-                emit('client_error', 'Token identity not valid.')
+                g.user = get_guest() # anonymous user
             else:
-                g.user = users[token['identity']]
+                try:
+                    g.user = User.objects.get(id=ObjectId(token['identity']))
+                except DoesNotExist:
+                    emit('client_error', 'Token identity not valid.')
             return f(*args, **kwargs)
         else:
             emit('client_error', 'Not authenticated.')
@@ -96,11 +101,10 @@ def test_login():
     name = request.json.get('name', None)
     if not name:
         return jsonify({'msg': 'No name provided', 'err': True}), 400
-    userid = f'test-{name}'
-    if not userid in users:
-        users[userid] = User(userid, name) # create user
-    user = users[userid]
-    token = create_access_token(identity=user.id, user_claims={'nickname': user.nickname})
+    test_login = f'test-{name}'
+    user = User.objects(test_login=test_login).upsert_one(set_on_insert__nickname=name)
+    user.save()
+    token = create_access_token(identity=str(user.id), user_claims={'nickname': user.nickname})
     return jsonify(access_token=token), 200
 
 @app.route('/bundled-assets/<filename>')
@@ -172,7 +176,7 @@ def join_game(data):
         game = games[gameid]
         if user.is_anonymous:
             emit('client_alert', 'You must be logged in to join a game.')
-        elif user.id in game.config.players:
+        elif game.has_player(user):
             emit('client_alert', 'You have already joined that game.')
         elif game.status not in ('WAIT', 'READY'):
             emit('client_alert', 'That game has already started.')
@@ -181,7 +185,7 @@ def join_game(data):
         elif not user_can_join_game(user):
             emit('client_alert', "You can't join a game while waiting for another game to start.")
         else:
-            game.add_player(user.id, user.nickname)
+            game.add_player(user)
             emit_lobby_update(gameid)
             emit_pregame_updates(gameid)
             notify_game_available(game)
@@ -195,13 +199,13 @@ def leave_game(data):
     print('leave_game: ' + repr(gameid))
     if gameid is not None and gameid in games:
         game = games[gameid]
-        if user.id not in game.config.players:
+        if not game.has_player(user):
             emit('client_alert', 'You have not joined that game.')
         elif game.status not in ('WAIT', 'READY'):
             emit('client_alert', 'That game has already started.')
         else:
-            game.remove_player(user.id)
-            channel = game.get_channel_for_user(user.id)
+            game.remove_player(user)
+            channel = game.get_channel_for_user(user)
             leave_room(channel)
             emit_lobby_update(gameid)
             if game.config.players:
@@ -219,16 +223,16 @@ def send_game_state_add_to_room(data):
   print('open_game: ' + repr(gameid))
   if gameid is not None and gameid in games:
     game = games[gameid]
-    channel = game.get_channel_for_user(user.id)
+    channel = game.get_channel_for_user(user)
     if game.status == 'WAIT' or game.status == 'READY':
-        if user.id in game.config.players:
+        if game.has_player(user):
             join_room(channel)
-            emit('update_pregame', game.get_pregame_update(user.id))
+            emit('update_pregame', game.get_pregame_update(user))
         else:
             emit('client_error', "Game not started.")
     else:
         join_room(channel)
-        emit('update_full', game.get_full_update(user.id))
+        emit('update_full', game.get_full_update(user))
     print(f"{user.id} subscribed to game {gameid} ({channel})")
   else:
     emit('client_error', 'Bad game ID when opening game.')
@@ -239,7 +243,7 @@ def close_game(data):
   gameid = data.get('gameid', None)
   if gameid is not None and gameid in games:
     game = games[gameid]
-    channel = game.get_channel_for_user(user.id)
+    channel = game.get_channel_for_user(user)
     leave_room(channel)
     # We don't give an error if the gameid is bad since maybe the game was just deleted
 
@@ -253,7 +257,7 @@ def ready(data):
     elif 'opts' not in data:
         emit('client_error', 'Missing action data.')
     else:
-        stored_opts = games[gameid].config.player_opts[user.id]
+        stored_opts = games[gameid].get_player_opts(user)
         for k in data['opts']:
             stored_opts[k] = data['opts'][k]
         emit_pregame_updates(gameid)
@@ -270,7 +274,7 @@ def game_action(data):
     emit('client_error', 'Missing action data.')
   else:
     try:
-      for channel, message_type, data in games[gameid].handle_action(user.id, data['action']):
+      for channel, message_type, data in games[gameid].handle_action(user, data['action']):
         socketio.emit(message_type, data, room=channel)
       emit_lobby_update(gameid)
     except IllegalAction:
@@ -278,7 +282,7 @@ def game_action(data):
 
 def user_can_join_game(user):
     for g in games.values():
-        if user.id in g.config.players and (g.status == 'WAIT' or g.status == 'READY'):
+        if g.has_player(user) and (g.status == 'WAIT' or g.status == 'READY'):
             return False
     return True
 
@@ -293,14 +297,15 @@ def emit_lobby_update(gameid):
 
 def emit_pregame_updates(gameid):
     for channel, message_type, data in games[gameid].get_pregame_updates():
+        print(channel, message_type, data)
         socketio.emit(message_type, data, room=channel)
 
 def start_game_if_ready(game):
     if game.can_start():
         game.start()
         emit_lobby_update(game.config.gameid)
-        for userid in game.config.players + [None]:
-            socketio.emit('update_full', game.get_full_update(userid), room=game.get_channel_for_user(userid))
+        for channel, message_type, data in game.get_full_updates():
+            socketio.emit(message_type, data, room=channel)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')

@@ -1,4 +1,4 @@
-import jsonobject as jo
+import mongoengine as me
 import random
 from collections import Counter
 from game.config import BaseConfig
@@ -6,12 +6,11 @@ from game.config import BaseConfig
 #pylint can't find the classes defined in jsonobject for some reason
 #pylint: disable=no-member
 
-class BaseModel(jo.JsonObject):
+class BaseModel(me.EmbeddedDocument):
+    meta = {'allow_inheritance': True}
     # game.status can also be WAIT or READY but in those situations a model does not exist
-    config = jo.ObjectProperty(BaseConfig)
-    result = jo.DefaultProperty(required=False, exclude_if_none=True)
-    def __init__(self, config):
-        super(BaseModel, self).__init__(config = config, result=None)
+    config = me.EmbeddedDocumentField(BaseConfig)
+    result = me.DictField(required=False, default=None)
     @property
     def status(self):
         return 'PLAY' if self.result is None else 'END'
@@ -23,11 +22,11 @@ class BaseModel(jo.JsonObject):
         raise NotImplementedError()
 
 class TurnBasedModel(BaseModel):
-    turn_order = jo.ListProperty(jo.StringProperty())
-    active_player_index = jo.IntegerProperty()
+    turn_order = me.ListField(me.StringField())
+    active_player_index = me.IntField()
     def __init__(self, config):
         super(TurnBasedModel, self).__init__(config)
-        self.turn_order = config.players[:]
+        self.turn_order[:] = config.players[:]
         self.setup()
     def setup(self):
         random.shuffle(self.turn_order)
@@ -66,7 +65,7 @@ class TurnBasedModel(BaseModel):
         return self.get_public_view()
 
 class SquareSubtractionModel(TurnBasedModel):
-    number = jo.IntegerProperty()
+    number = me.IntField()
     def setup(self):
         self.number = self.config.starting_number
         super(SquareSubtractionModel, self).setup()
@@ -88,10 +87,10 @@ class SquareSubtractionModel(TurnBasedModel):
         return result
 
 class ExampleCardGameModel(TurnBasedModel):
-    hands = jo.DefaultProperty()
-    deck = jo.ListProperty(jo.IntegerProperty())
-    stack = jo.ListProperty(jo.IntegerProperty())
-    viewing = jo.ListProperty(jo.IntegerProperty(), required=False)
+    hands = me.MapField(me.ListField(me.IntField))
+    deck = me.ListField(me.IntField())
+    stack = me.ListField(me.IntField())
+    viewing = me.ListField(me.IntField(), required=False)
     @property
     def current_total(self):
         return sum(self.stack)

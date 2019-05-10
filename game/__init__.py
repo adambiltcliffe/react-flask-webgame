@@ -1,7 +1,6 @@
 import json_delta
 import random
-from game.config import BaseConfig, SquareSubtractionConfig, IllegalConfig
-from game.config import ExampleCardGameConfig #pylint: disable=no-name-in-module
+from game.config import BaseConfig, ExampleCardGameConfig, IllegalConfig, SquareSubtractionConfig
 from game.history import HistoryStep
 from game.model import BaseModel, SquareSubtractionModel, ExampleCardGameModel
 
@@ -30,7 +29,7 @@ class BaseGame:
     model_class = BaseModel
     type_string = None
     def __init_subclass__(cls):
-        BaseConfig.properties()['game_type'].choice_keys.append(cls.type_string)
+        BaseConfig.game_type.choices.append(cls.type_string)
     def __init__(self, gameid, config_args):
         self.temp_config = self.config_class(gameid=gameid, game_type=self.type_string, **config_args)
         self.model = None
@@ -63,7 +62,7 @@ class BaseGame:
         useridstr = str(user.id)
         self.config.players.append(useridstr)
         self.config.playernicks[useridstr] = user.nickname
-        self.config.player_opts[useridstr] = self.config.player_opts._wrapper.item_type()
+        self.config.player_opts[useridstr] = self.config.player_opts_class()
     def has_player(self, user):
         return str(user.id) in self.config.players
     def remove_player(self, user):
@@ -126,7 +125,10 @@ class BaseGame:
         else:
             return self.get_observer_channel()
     def get_available_opts_by_id(self, uid):
-        return self.config.player_opts[uid].to_json() if uid in self.config.players else None
+        rv = self.config.player_opts[uid].to_mongo() if uid in self.config.players else None
+        print(type(rv))
+        print(rv)
+        return rv
     def get_pregame_update(self, user):
         return self.get_pregame_update_by_id(str(user.id))
     def get_pregame_update_by_id(self, uid):

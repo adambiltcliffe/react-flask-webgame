@@ -102,17 +102,17 @@ class BaseGame:
         return {**self.get_lobby_info(), **self.model.get_player_view(userid)}
     def update_history(self):
         if len(self.history) == 0:
-            last_step_json = HistoryStep(public_view={}, player_views={uid: {} for uid in self.config.players}).to_json()
+            last_step_bson = HistoryStep(public_view={}, player_views={uid: {} for uid in self.config.players}).to_mongo()
         else:
-            last_step_json = self.history[-1].to_json()
+            last_step_bson = self.history[-1].to_mongo()
         step = HistoryStep(log_message=' '.join(self.current_step_log))
         pv = self.get_public_view()
         step.public_view = pv
-        step.public_view_delta = json_delta.diff(last_step_json['public_view'], pv, verbose=False)
+        step.public_view_delta = json_delta.diff(last_step_bson['public_view'], pv, verbose=False)
         for uid in self.config.players:
             spv = self.get_player_view_by_id(uid)
             step.player_views[uid] = spv
-            step.player_view_deltas[uid] = json_delta.diff(last_step_json['player_views'][uid], spv, verbose=False)
+            step.player_view_deltas[uid] = json_delta.diff(last_step_bson['player_views'][uid], spv, verbose=False)
         self.history.append(step)
         self.current_step_log = []
     def get_observer_channel(self):

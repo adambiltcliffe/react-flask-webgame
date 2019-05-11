@@ -4,7 +4,6 @@ eventlet.monkey_patch()
 from collections import defaultdict
 from functools import wraps
 
-from bson.objectid import ObjectId
 from flask import (Flask, g, jsonify, redirect, render_template,
                     request, send_from_directory)
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
@@ -75,7 +74,7 @@ def check_user(f):
                 g.user = get_guest() # anonymous user
             else:
                 try:
-                    g.user = User.objects.get(id=ObjectId(token['identity']))
+                    g.user = User.objects.get(test_login=token['identity'])
                 except DoesNotExist:
                     emit('client_error', 'Token identity not valid.')
             return f(*args, **kwargs)
@@ -161,7 +160,7 @@ def create_game(data):
             gclass = {'subtract_square': SquareSubtractionGame, 'example_card': ExampleCardGame}[gametype]
             config_args = data.get('config_args', {})
             try:
-                game = make_game(gclass, user, config_args=config_args)
+                game = make_game(gclass, user._get_current_object(), config_args=config_args)
                 emit_lobby_update(game.config.gameid)
                 notify_game_available(game)
             except IllegalConfig as e:
@@ -185,7 +184,7 @@ def join_game(data):
         elif not user_can_join_game(user):
             emit('client_alert', "You can't join a game while waiting for another game to start.")
         else:
-            game.add_player(user)
+            game.add_player(user._get_current_object())
             emit_lobby_update(gameid)
             emit_pregame_updates(gameid)
             notify_game_available(game)
@@ -204,7 +203,7 @@ def leave_game(data):
         elif game.status not in ('WAIT', 'READY'):
             emit('client_alert', 'That game has already started.')
         else:
-            game.remove_player(user)
+            game.remove_player(user._get_current_object())
             channel = game.get_channel_for_user(user)
             leave_room(channel)
             emit_lobby_update(gameid)

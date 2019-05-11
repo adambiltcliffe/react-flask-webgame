@@ -3,9 +3,6 @@ import random
 from collections import Counter
 from game.config import BaseConfig
 
-#pylint can't find the classes defined in jsonobject for some reason
-#pylint: disable=no-member
-
 class BaseModel(me.EmbeddedDocument):
     meta = {'allow_inheritance': True}
     # game.status can also be WAIT or READY but in those situations a model does not exist
@@ -22,11 +19,11 @@ class BaseModel(me.EmbeddedDocument):
         raise NotImplementedError()
 
 class TurnBasedModel(BaseModel):
-    turn_order = me.ListField(me.StringField())
+    turn_order = me.ListField(me.ReferenceField('User'))
     active_player_index = me.IntField()
     def __init__(self, config):
         super(TurnBasedModel, self).__init__(config)
-        self.turn_order[:] = config.players[:]
+        self.turn_order = config.players[:]
         self.setup()
     def setup(self):
         random.shuffle(self.turn_order)
@@ -35,22 +32,22 @@ class TurnBasedModel(BaseModel):
     def get_start_message(self):
         return f'Game started. {self.active_usernick} plays first.'
     @property
-    def active_userid(self):
+    def active_user(self):
         return self.turn_order[self.active_player_index]
     @property
     def active_usernick(self):
-        return self.config.playernicks[self.active_userid]
+        return self.active_user.nickname # probably not needed eventually?
     def update_legal_actions(self):
-        self._cached_actions = {uid: [] for uid in self.config.players}
-        self._cached_actions[self.active_userid] = list(self.get_actions_for_active_player())
-    def get_actions(self, userid):
-        return self._cached_actions[userid]
+        self._cached_actions = {p.id: [] for p in self.config.players}
+        self._cached_actions[self.active_user.id] = list(self.get_actions_for_active_player())
+    def get_actions(self, user):
+        return self._cached_actions[user.id]
     def get_actions_for_active_player(self):
         raise NotImplementedError()
-    def is_legal_action(self, userid, action):
-        return action in self.get_actions(userid) # TODO cache result of this to avoid repeat call
-    def apply_action(self, userid, action, log_callback):
-        if not self.is_legal_action(userid, action):
+    def is_legal_action(self, user, action):
+        return action in self.get_actions(user) # TODO cache result of this to avoid repeat call
+    def apply_action(self, user, action, log_callback):
+        if not self.is_legal_action(user, action):
             return False
         else:
             self.apply_action_for_active_player(action, log_callback)
@@ -61,7 +58,7 @@ class TurnBasedModel(BaseModel):
         self.active_player_index = (self.active_player_index + 1) % len(self.turn_order)
     def get_public_view(self):
         return {}
-    def get_player_view(self, userid):
+    def get_player_view(self, user):
         return self.get_public_view()
 
 class SquareSubtractionModel(TurnBasedModel):
@@ -78,7 +75,7 @@ class SquareSubtractionModel(TurnBasedModel):
         self.number -= int(move)
         log_callback(f'{self.active_usernick} chooses {move}.')
         if self.number == 0:
-            self.result = {'winner': self.active_userid}
+            self.result = {'winner': self.active_user.id}
             log_callback(f'{self.active_usernick} wins!')
         self.advance_turn()
     def get_public_view(self):
@@ -99,31 +96,31 @@ class ExampleCardGameModel(TurnBasedModel):
         cards = list(range(1,6)) * 5
         random.shuffle(cards)
         self.hands = {}
-        self.hands[self.config.players[0]] = cards[0:cards_to_deal]
-        self.hands[self.config.players[1]] = cards[cards_to_deal:cards_to_deal * 2]
+        self.hands[self.config.players[0].id] = cards[0:cards_to_deal]
+        self.hands[self.config.players[1].id] = cards[cards_to_deal:cards_to_deal * 2]
         self.deck = cards[cards_to_deal * 2:]
         if self.config.use_special_cards:
-            for playerid in self.config.players:
-                self.hands[playerid].append(self.config.player_opts[playerid].special_card)
+            for p in self.config.players:
+                self.hands[p.id].append(self.config.player_opts[p.id].special_card)
         self.stack = []
         self.viewing = None
         super(ExampleCardGameModel, self).setup()
     def update_legal_actions(self):
         if self.result is not None:
-            self._cached_actions = {uid: [['restart']] for uid in self.config.players}
+            self._cached_actions = {p.id: [['restart']] for p in self.config.players}
         else:
             super(ExampleCardGameModel, self).update_legal_actions()
     def get_actions_for_active_player(self):
         if self.viewing:
             yield from [['pick', n] for n in sorted(set(self.viewing))]
         else:
-            yield from [['play', n] for n in sorted(set(self.hands[self.active_userid]))]
-            c = Counter(self.hands[self.active_userid])
+            yield from [['play', n] for n in sorted(set(self.hands[self.active_user.id]))]
+            c = Counter(self.hands[self.active_user.id])
             for v in c:
                 if c[v] > 1:
                     yield ['discard_double', v]
-    def apply_action(self, userid, action, log_callback):
-        if not self.is_legal_action(userid, action):
+    def apply_action(self, user, action, log_callback):
+        if not self.is_legal_action(user, action):
             return False
         if action == ['restart']:
             self.result = None
@@ -137,25 +134,25 @@ class ExampleCardGameModel(TurnBasedModel):
         if move_type == 'play':
             self.stack.append(int(action[1]))
             log_callback(f'{self.active_usernick} plays a {action[1]}, making the total {self.current_total}.')
-            self.hands[self.active_userid].remove(int(action[1]))
+            self.hands[self.active_user.id].remove(int(action[1]))
             if self.current_total == 21:
-                self.result = {'winner': self.active_userid}
+                self.result = {'winner': self.active_user.id}
                 log_callback(f'{self.active_usernick} wins by reaching 21.')
             elif self.current_total > 21:
-                self.result = {'winner': self.turn_order[1 - self.active_player_index]}
+                self.result = {'winner': (self.turn_order[1 - self.active_player_index]).id}
                 log_callback(f'{self.active_usernick} went over 21. {self.config.playernicks[self.result["winner"]]} wins.')
             else:
-                self.hands[self.active_userid].append(self.deck.pop())
+                self.hands[self.active_user.id].append(self.deck.pop())
             self.advance_turn()
         elif move_type == 'discard_double':
             log_callback(f'{self.active_usernick} discards a pair of {action[1]}s.')
-            self.hands[self.active_userid].remove(int(action[1]))
-            self.hands[self.active_userid].remove(int(action[1]))
+            self.hands[self.active_user.id].remove(int(action[1]))
+            self.hands[self.active_user.id].remove(int(action[1]))
             self.viewing = self.deck[:5]
             self.deck = self.deck[5:]
         elif move_type == 'pick':
             log_callback(f'{self.active_usernick} chooses a card from the top five of the deck.')
-            self.hands[self.active_userid].append(int(action[1]))
+            self.hands[self.active_user.id].append(int(action[1]))
             self.viewing.remove(int(action[1]))
             random.shuffle(self.viewing)
             self.deck.extend(self.viewing)
@@ -167,11 +164,11 @@ class ExampleCardGameModel(TurnBasedModel):
         result['current_total'] = self.current_total
         result['deck_count'] = len(self.deck)
         result['stack'] = self.stack.copy()
-        result['hand_counts'] = {uid: len(self.hands[uid]) for uid in self.config.players}
+        result['hand_counts'] = {p.id: len(self.hands[p.id]) for p in self.config.players}
         return result
-    def get_player_view(self, userid):
-        result = super(ExampleCardGameModel, self).get_player_view(userid)
-        result['my_hand'] = self.hands[userid].copy()
-        if self.viewing and userid == self.active_userid:
+    def get_player_view(self, user):
+        result = super(ExampleCardGameModel, self).get_player_view(user)
+        result['my_hand'] = self.hands[user.id].copy()
+        if self.viewing and user == self.active_user:
             result['viewing'] = self.viewing.copy()
         return result

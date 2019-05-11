@@ -47,7 +47,7 @@ class BaseGame:
     def get_lobby_info(self):
         result = {'gameid': self.config.gameid,
                   'game_type': self.config.game_type,
-                  'players': self.config.players.copy(),
+                  'players': [p.id for p in self.config.players],
                   'playernicks': self.config.playernicks.copy(),
                   'status': self.status}
         return result
@@ -59,30 +59,28 @@ class BaseGame:
             raise GameFullError()
         if self.model is not None:
             raise GameAlreadyStartedError()
-        useridstr = str(user.id)
-        self.config.players.append(useridstr)
-        self.config.playernicks[useridstr] = user.nickname
-        self.config.player_opts[useridstr] = self.config.player_opts_class()
+        self.config.players.append(user)
+        self.config.playernicks[user.id] = user.nickname
+        self.config.player_opts[user.id] = self.config.player_opts_class()
     def has_player(self, user):
-        return str(user.id) in self.config.players
+        return user in self.config.players
     def remove_player(self, user):
         if not self.has_player(user):
             raise GameNotJoinedError()
         if self.model is not None:
             raise GameAlreadyStartedError()
-        useridstr = str(user.id)
-        self.config.players.remove(useridstr)
-        del self.config.playernicks[useridstr]
-        del self.config.player_opts[useridstr]
+        self.config.players.remove(user)
+        del self.config.playernicks[user.id]
+        del self.config.player_opts[user.id]
     def get_player_opts(self, user):
-        return self.config.player_opts[str(user.id)]
+        return self.config.player_opts[user.id]
     def can_start(self):
         print("checking if game can start")
         print(self.config)
         if len(self.config.players) < self.min_players:
             return False
-        for userid in self.config.players:
-            if self.config.player_opts[userid].ready == False:
+        for user in self.config.players:
+            if self.config.player_opts[user.id].ready == False:
                 return False
         return True
     def start(self):
@@ -97,86 +95,74 @@ class BaseGame:
     def get_public_view(self):
         return {**self.get_lobby_info(), **self.model.get_public_view()}
     def get_player_view(self, user):
-        return self.get_player_view_by_id(str(user.id))
-    def get_player_view_by_id(self, userid):
-        return {**self.get_lobby_info(), **self.model.get_player_view(userid)}
+        return self.get_public_view()
     def update_history(self):
         if len(self.history) == 0:
-            last_step_bson = HistoryStep(public_view={}, player_views={uid: {} for uid in self.config.players}).to_mongo()
+            last_step_bson = HistoryStep(public_view={}, player_views={p.id: {} for p in self.config.players}).to_mongo()
         else:
             last_step_bson = self.history[-1].to_mongo()
         step = HistoryStep(log_message=' '.join(self.current_step_log))
         pv = self.get_public_view()
         step.public_view = pv
         step.public_view_delta = json_delta.diff(last_step_bson['public_view'], pv, verbose=False)
-        for uid in self.config.players:
-            spv = self.get_player_view_by_id(uid)
-            step.player_views[uid] = spv
-            step.player_view_deltas[uid] = json_delta.diff(last_step_bson['player_views'][uid], spv, verbose=False)
+        for p in self.config.players:
+            spv = self.get_player_view(p)
+            step.player_views[p.id] = spv
+            step.player_view_deltas[p.id] = json_delta.diff(last_step_bson['player_views'][p.id], spv, verbose=False)
         self.history.append(step)
         self.current_step_log = []
     def get_observer_channel(self):
         return f'{self.config.gameid}-observers'
     def get_channel_for_user(self, user):
-        return self.get_channel_for_user_by_id(str(user.id))
-    def get_channel_for_user_by_id(self, useridstr):
-        if useridstr in self.config.players:
-            return f'{self.config.gameid}-player-{useridstr}'
+        if user in self.config.players:
+            return f'{self.config.gameid}-player-{str(user.id)}'
         else:
             return self.get_observer_channel()
-    def get_available_opts_by_id(self, uid):
-        rv = self.config.player_opts[uid].to_mongo() if uid in self.config.players else None
-        print(type(rv))
-        print(rv)
-        return rv
+    def get_available_opts(self, user):
+        return self.config.player_opts[user.id].to_mongo() if user in self.config.players else None
     def get_pregame_update(self, user):
-        return self.get_pregame_update_by_id(str(user.id))
-    def get_pregame_update_by_id(self, uid):
-        ready = {userid: self.config.player_opts[userid].ready for userid in self.config.players}
-        opts = self.get_available_opts_by_id(uid)
+        ready = {str(user.id): self.config.player_opts[user.id].ready for user in self.config.players}
+        opts = self.get_available_opts(user)
         return {'gameid': self.config.gameid,
                 'info': self.get_lobby_info(),
                 'ready': ready,
                 'opts': opts}
     def get_pregame_updates(self):
-        for uid in self.config.players:
-            yield (self.get_channel_for_user_by_id(uid), 'update_pregame', self.get_pregame_update_by_id(uid))
+        for user in self.config.players:
+            yield (self.get_channel_for_user(user), 'update_pregame', self.get_pregame_update(user))
     def get_full_update(self, user):
-        return self.get_full_update_by_id(str(user.id))
-    def get_full_update_by_id(self, uid):
-        if uid not in self.config.players:
+        if user not in self.config.players:
             return {'gameid': self.config.gameid,
                     'history': [{'text': h.log_message, 'delta': h.public_view_delta} for h in self.history],
                     'prompts': {}}
         return {'gameid': self.config.gameid,
-                'history': [{'text': h.log_message, 'delta': h.player_view_deltas[uid]} for h in self.history],
-                'prompts': self.get_current_prompts_by_id(uid)}
+                'history': [{'text': h.log_message, 'delta': h.player_view_deltas[user.id]} for h in self.history],
+                'prompts': self.get_current_prompts(user)}
     def get_full_updates(self):
-        for uid in self.config.players:
-            yield(self.get_channel_for_user_by_id(uid), 'update_full', self.get_full_update_by_id(uid))
-    def get_step_update_by_id(self, uid):
-        if uid not in self.config.players:
+        for user in self.config.players:
+            yield(self.get_channel_for_user(user), 'update_full', self.get_full_update(user))
+    def get_step_update(self, user):
+        if user not in self.config.players:
             delta = self.history[-1].public_view_delta
             prompts = {}
         else:
-            delta = self.history[-1].player_view_deltas[uid]
-            prompts = self.get_current_prompts_by_id(uid)
+            delta = self.history[-1].player_view_deltas[user.id]
+            prompts = self.get_current_prompts(user)
         idx = len(self.history) - 1
         return {'gameid': self.config.gameid,
                 'index': idx,
                 'step': {'text': self.history[-1].log_message, 'delta': delta},
                 'prompts': prompts}
-    def get_current_prompts_by_id(self, userid):
-        return {'buttons': [[act, act] for act in self.model.get_actions(userid)]}
+    def get_current_prompts(self, user):
+        return {'buttons': [[act, act] for act in self.model.get_actions(user)]}
     def handle_action(self, user, action):
-        useridstr = str(user.id)
-        if not self.model.is_legal_action(useridstr, action):
+        if not self.model.is_legal_action(user, action):
             raise IllegalAction()
-        self.model.apply_action(useridstr, action, self.log)
+        self.model.apply_action(user, action, self.log)
         self.update_history()
-        yield (self.get_observer_channel(), 'update_step', self.get_step_update_by_id(None))
-        for uid in self.config.players:
-            yield (self.get_channel_for_user_by_id(uid), 'update_step', self.get_step_update_by_id(uid))
+        yield (self.get_observer_channel(), 'update_step', self.get_step_update(None))
+        for user in self.config.players:
+            yield (self.get_channel_for_user(user), 'update_step', self.get_step_update(user))
 
 class SquareSubtractionGame(BaseGame):
     min_players = 2
@@ -187,7 +173,7 @@ class SquareSubtractionGame(BaseGame):
     def get_lobby_info(self):
         result = super(SquareSubtractionGame, self).get_lobby_info()
         if self.model is not None:
-            result['turn'] = self.model.active_userid
+            result['turn'] = self.model.active_user.id
         return result
 
 class ExampleCardGame(BaseGame):
@@ -199,12 +185,12 @@ class ExampleCardGame(BaseGame):
     def get_lobby_info(self):
         result = super(ExampleCardGame, self).get_lobby_info()
         if self.model is not None:
-            result['turn'] = self.model.active_userid
+            result['turn'] = self.model.active_user.id
         return result
-    def get_available_opts(self, uid):
-        if uid not in self.config.players:
+    def get_available_opts(self, user):
+        if user not in self.config.players:
             return None
-        opts = self.config.player_opts[uid].to_json()
+        opts = self.config.player_opts[user.id].to_mongo()
         if not self.config.use_special_cards:
             del opts['special_card']
         return opts
@@ -220,13 +206,13 @@ class ExampleCardGame(BaseGame):
             return 'Restart the game'
         else:
             return '???'
-    def get_current_prompts_by_id(self, userid):
-        buttons_prompts = [[self.get_text_for_action(act), act] for act in self.model.get_actions(userid)]
-        hand_card_prompts = {card: [] for card in self.model.hands[userid]}
+    def get_current_prompts(self, user):
+        buttons_prompts = [[self.get_text_for_action(act), act] for act in self.model.get_actions(user)]
+        hand_card_prompts = {card: [] for card in self.model.hands[user.id]}
         viewed_card_prompts = {card: [] for card in self.model.viewing or []}
         text = 'Waiting ...'
         verbs = set()
-        for act in self.model.get_actions(userid):
+        for act in self.model.get_actions(user):
             verbs.add(act[0])
             if act[0] == 'play' or act[0] == 'discard_double':
                 hand_card_prompts[act[1]].append([self.get_text_for_action(act), act])

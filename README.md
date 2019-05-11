@@ -4,7 +4,9 @@ Most things are working
 MongoDB stuff
 -------------
 
-Change config.players from a StringField of player IDs to an actual list of refs
+Check opening of created or joined games is working
+
+Create sequential ids for users
 
 Make sure model._cached_actions is persisted to at least some extent
 

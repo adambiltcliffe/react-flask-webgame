@@ -4,8 +4,6 @@ Most things are working
 MongoDB stuff
 -------------
 
-Check opening of created or joined games is working
-
 Create sequential ids for users
 
 Make sure model._cached_actions is persisted to at least some extent
@@ -13,8 +11,6 @@ Make sure model._cached_actions is persisted to at least some extent
 Remove use of external gameid
 
 Remove nickname mapping from config
-
-Experiment with building state slices, views, etc. as Documents rather than dicts
 
 
 Random stuff

@@ -48,7 +48,7 @@ class BaseGame:
         result = {'gameid': self.config.gameid,
                   'game_type': self.config.game_type,
                   'players': [p.id for p in self.config.players],
-                  'playernicks': self.config.playernicks.copy(),
+                  'playernicks': {p.id: p.nickname for p in self.config.players},
                   'status': self.status}
         return result
     @property
@@ -60,7 +60,6 @@ class BaseGame:
         if self.model is not None:
             raise GameAlreadyStartedError()
         self.config.players.append(user)
-        self.config.playernicks[user.id] = user.nickname
         self.config.player_opts[user.id] = self.config.player_opts_class()
     def has_player(self, user):
         return user in self.config.players
@@ -70,7 +69,6 @@ class BaseGame:
         if self.model is not None:
             raise GameAlreadyStartedError()
         self.config.players.remove(user)
-        del self.config.playernicks[user.id]
         del self.config.player_opts[user.id]
     def get_player_opts(self, user):
         return self.config.player_opts[user.id]

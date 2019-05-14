@@ -30,13 +30,10 @@ class TurnBasedModel(BaseModel):
         self.active_player_index = 0
         self.update_legal_actions()
     def get_start_message(self):
-        return f'Game started. {self.active_usernick} plays first.'
+        return f'Game started. {self.active_user.nickname} plays first.'
     @property
     def active_user(self):
         return self.turn_order[self.active_player_index]
-    @property
-    def active_usernick(self):
-        return self.active_user.nickname # probably not needed eventually?
     def update_legal_actions(self):
         self._cached_actions = {p.id: [] for p in self.config.players}
         self._cached_actions[self.active_user.id] = list(self.get_actions_for_active_player())
@@ -73,10 +70,10 @@ class SquareSubtractionModel(TurnBasedModel):
             n += 1
     def apply_action_for_active_player(self, move, log_callback):
         self.number -= int(move)
-        log_callback(f'{self.active_usernick} chooses {move}.')
+        log_callback(f'{self.active_user.nickname} chooses {move}.')
         if self.number == 0:
             self.result = {'winner': self.active_user.id}
-            log_callback(f'{self.active_usernick} wins!')
+            log_callback(f'{self.active_user.nickname} wins!')
         self.advance_turn()
     def get_public_view(self):
         result = super(SquareSubtractionModel, self).get_public_view()
@@ -125,7 +122,7 @@ class ExampleCardGameModel(TurnBasedModel):
         if action == ['restart']:
             self.result = None
             self.setup()
-            log_callback(f'New game starting. {self.active_usernick} plays first.')
+            log_callback(f'New game starting. {self.active_user.nickname} plays first.')
         else:
             self.apply_action_for_active_player(action, log_callback)
         self.update_legal_actions()
@@ -133,25 +130,26 @@ class ExampleCardGameModel(TurnBasedModel):
         move_type = action[0]
         if move_type == 'play':
             self.stack.append(int(action[1]))
-            log_callback(f'{self.active_usernick} plays a {action[1]}, making the total {self.current_total}.')
+            log_callback(f'{self.active_user.nickname} plays a {action[1]}, making the total {self.current_total}.')
             self.hands[self.active_user.id].remove(int(action[1]))
             if self.current_total == 21:
                 self.result = {'winner': self.active_user.id}
-                log_callback(f'{self.active_usernick} wins by reaching 21.')
+                log_callback(f'{self.active_user.nickname} wins by reaching 21.')
             elif self.current_total > 21:
                 self.result = {'winner': (self.turn_order[1 - self.active_player_index]).id}
-                log_callback(f'{self.active_usernick} went over 21. {self.config.playernicks[self.result["winner"]]} wins.')
+                winner_nick = [p.nickname for p in self.config.players if p.id == self.result['winner']][0]
+                log_callback(f'{self.active_user.nickname} went over 21. {winner_nick} wins.')
             else:
                 self.hands[self.active_user.id].append(self.deck.pop())
             self.advance_turn()
         elif move_type == 'discard_double':
-            log_callback(f'{self.active_usernick} discards a pair of {action[1]}s.')
+            log_callback(f'{self.active_user.nickname} discards a pair of {action[1]}s.')
             self.hands[self.active_user.id].remove(int(action[1]))
             self.hands[self.active_user.id].remove(int(action[1]))
             self.viewing = self.deck[:5]
             self.deck = self.deck[5:]
         elif move_type == 'pick':
-            log_callback(f'{self.active_usernick} chooses a card from the top five of the deck.')
+            log_callback(f'{self.active_user.nickname} chooses a card from the top five of the deck.')
             self.hands[self.active_user.id].append(int(action[1]))
             self.viewing.remove(int(action[1]))
             random.shuffle(self.viewing)

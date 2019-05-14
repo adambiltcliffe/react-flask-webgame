@@ -24,9 +24,12 @@ jwt = JWTManager(app)
 connect('webgame', host='127.0.0.1', port=27017)
 
 def make_user(login, nickname):
-    u = User.objects(test_login=login).upsert_one(set__nickname=nickname)
-    u.save()
-    return u
+    try:
+        return User.objects(test_login=login).get()
+    except User.DoesNotExist:
+        u = User(test_login=login, nickname=nickname)
+        u.save()
+        return u
 albus = make_user('test-albus', 'Albus Dumbledore')
 bungo = make_user('test-bungo', 'Mr Bungo')
 conan = make_user('test-conan', 'Conan the Barbarian')
@@ -73,11 +76,10 @@ def check_user(f):
             if token is None:
                 g.user = get_guest() # anonymous user
             else:
-                try:
-                    g.user = User.objects.get(test_login=token['identity'])
-                except DoesNotExist:
-                    emit('client_error', 'Token identity not valid.')
-            return f(*args, **kwargs)
+                g.user = User.objects.with_id(token['identity'])
+            if g.user is not None:
+                return f(*args, **kwargs)
+            emit('client_error', 'Token identity not valid.')
         else:
             emit('client_error', 'Not authenticated.')
     return wrapper

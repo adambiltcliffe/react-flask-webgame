@@ -16,7 +16,6 @@ class BaseConfig(me.EmbeddedDocument):
     game_type = me.StringField(required=True, choices=[])
     gameid = me.StringField(required=True) # TODO get rid of this
     players = me.ListField(me.ReferenceField('User'))
-    playernicks = me.MapField(me.StringField()) # TODO get rid of this
     player_opts = me.MapField(me.EmbeddedDocumentField(BasePlayerOpts))
 
 class SquareSubtractionConfig(BaseConfig):

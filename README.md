@@ -4,13 +4,11 @@ Most things are working
 MongoDB stuff
 -------------
 
-Create sequential ids for users
-
 Make sure model._cached_actions is persisted to at least some extent
 
 Remove use of external gameid
 
-Remove nickname mapping from config
+Persist the game object
 
 
 Random stuff
